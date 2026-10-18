@@ -1,0 +1,175 @@
+แบ่งทีมเป็น 3 กลุ่ม
+
+1. Cloud Infrastructure & Security	2 คน	หน้าที่  > VPC, Subnet, NAT, SG, IAM, KMS, CloudWatch
+
+2. Data Engineering & Warehouse 2 คน หน้าที่ > S3, Glue, ETL, Redshift, Schema, SQL
+
+3. BI & Application 2 คน หน้าที่ > QuickSight, Dashboard, Role-based Data Access
+
+_______________________________________________________
+
+1. Cloud Infrastructure & Security
+
+เป้าหมาย: สร้างและรักษาความปลอดภัยของ AWS Environment
+
+งานที่ทำ
+VPC
+├── Public Subnet
+│   └── NAT Gateway
+│
+└── Private Subnet A/B
+    └── Redshift / Glue VPC Connection
+
+รายละเอียด
+- VPC
+- Public / Private Subnet
+- Availability Zones
+- Internet Gateway
+- NAT Gateway
+- Route Table
+- VPC Endpoint
+- Security Group
+- IAM
+- Role-Based Access Control
+- KMS Encryption
+- CloudWatch Monitoring
+
+สิ่งที่ต้องส่งมอบ
+
+Cloud Architecture + Network Architecture + Security Design
+
+บทบาทนี้ตอบคำถามว่า:
+
+“ระบบของเราถูกสร้างและป้องกันบน AWS อย่างไร?”
+
+_______________________________________________________
+
+
+2. Data Engineering & Data Warehouse
+
+เป้าหมาย: นำ TheLook Dataset เข้ามาใน AWS และเปลี่ยนเป็น Data Warehouse ที่พร้อมใช้งาน
+
+Workflow
+TheLook Dataset
+      ↓
+S3 Raw
+      ↓
+Glue Crawler
+      ↓
+Glue Data Catalog
+      ↓
+Glue ETL
+      ↓
+S3 Processed
+      ↓
+Redshift
+
+งานที่ทำ
+
+S3
+- Raw / Processed structure
+- Upload dataset
+- Data organization
+
+Glue
+- Crawler
+- Data Catalog
+- ETL
+- Cleaning
+- Transformation
+- Join
+- Data Validation
+
+Redshift
+- Database
+- Star Schema
+- Fact Tables
+- Dimension Tables
+- SQL
+- Views
+
+ตัวอย่าง:
+
+Dimensions
+├── dim_customer
+├── dim_product
+├── dim_date
+└── dim_distribution_center
+
+Facts
+├── fact_sales
+├── fact_inventory
+└── fact_events
+
+สิ่งที่ต้องส่งมอบ
+- Data Pipeline
+- ETL Code
+- Data Model / ERD
+- Star Schema
+- Redshift Tables
+- SQL / Views
+
+บทบาทนี้ตอบคำถามว่า:
+
+“ข้อมูลของเราถูกเก็บ ประมวลผล และจัดโครงสร้างบน Cloud อย่างไร?”
+
+_______________________________________________________
+
+3. BI & Business Application
+
+เป้าหมาย: เอาข้อมูลใน Redshift ไปใช้จริง และแสดงให้เห็นว่า Role ต่าง ๆ ได้ข้อมูลไม่เหมือนกัน
+
+Workflow:
+
+Redshift
+    ↓
+QuickSight
+    ↓
+Role-based Dashboard
+
+สร้าง Dashboard
+- Executive
+- Revenue
+- Orders
+- Customers
+- Overall Performance
+- Sales
+- Sales
+- Products
+- Categories
+- Orders
+- Finance
+- Revenue
+- Cost
+- Profit
+- Operations
+- Inventory
+- Distribution Center
+- Fulfillment
+- Marketing / Customer
+- Customer Behavior
+- Web Events
+- Traffic
+
+จากนั้นเชื่อมกับ Security:
+
+User
+ ↓
+IAM Role
+ ↓
+Permission
+ ↓
+QuickSight / Redshift View
+ ↓
+เฉพาะข้อมูลของ Role
+
+สิ่งที่ต้องส่งมอบ
+- QuickSight Dashboards
+- KPI
+- Data Access by Role
+- Permission Testing
+- Business Use Cases
+
+บทบาทนี้ตอบคำถามว่า:
+
+“ข้อมูลที่เราสร้างขึ้นมาสามารถนำไปใช้โดยผู้ใช้แต่ละฝ่ายอย่างไร?”

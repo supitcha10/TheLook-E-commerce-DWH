@@ -1,0 +1,43 @@
+{
+  "version": "provisional-v1",
+  "recorded_on": "2026-10-18",
+  "source_confirmation": "pending",
+  "note": "Known issue counts belong only to this CSV snapshot. Do not refresh baseline automatically.",
+  "tables": {
+    "users": {
+      "rows": 100000,
+      "sha256": "7f03c981482f8ebabc88a47f9151d4591d0068325e5207d35e37aebb1d4e471f"
+    },
+    "events": {
+      "rows": 2431963,
+      "sha256": "8ac24f7be54edeefe0f212dab1d33c1e94ee6b0a315e310e2973aa8e4e837547"
+    },
+    "order_items": {
+      "rows": 181759,
+      "sha256": "fe86c46cb0b947cbcedc8abc066c4458b0b577de8d72e116d965476d3b143355"
+    }
+  },
+  "issues": [
+    {
+      "id": "CITY-01-users",
+      "table": "users",
+      "rule": "null_like_text:city",
+      "expected_count": 958,
+      "expected_checked_rows": 100000
+    },
+    {
+      "id": "CITY-01-events",
+      "table": "events",
+      "rule": "null_like_text:city",
+      "expected_count": 23080,
+      "expected_checked_rows": 2431963
+    },
+    {
+      "id": "DATE-01-items",
+      "table": "order_items",
+      "rule": "date_order:shipped_at>=created_at",
+      "expected_count": 35872,
+      "expected_checked_rows": 118281
+    }
+  ]
+}

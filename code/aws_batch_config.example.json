@@ -1,0 +1,7 @@
+{
+  "curated_dir": "outputs/curated/20261018T070120429459Z",
+  "bucket": "replace-with-your-bucket",
+  "prefix": "thelook/curated",
+  "iam_role": "arn:aws:iam::123456789012:role/REPLACE_WITH_ACTUAL_ROLE",
+  "observed_at": "2026-10-18T07:01:20.429459+00:00"
+}

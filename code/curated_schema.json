@@ -1,0 +1,406 @@
+{
+  "version": "curated-v1",
+  "rounding": "ROUND_HALF_UP",
+  "tables": {
+    "distribution_centers": {
+      "primary_key": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(256)",
+          "nullable": false
+        },
+        {
+          "name": "latitude",
+          "type": "DOUBLE PRECISION",
+          "nullable": false
+        },
+        {
+          "name": "longitude",
+          "type": "DOUBLE PRECISION",
+          "nullable": false
+        }
+      ]
+    },
+    "products": {
+      "primary_key": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "cost",
+          "type": "DECIMAL(18,6)",
+          "nullable": false
+        },
+        {
+          "name": "category",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(1024)",
+          "nullable": true
+        },
+        {
+          "name": "brand",
+          "type": "VARCHAR(256)",
+          "nullable": true
+        },
+        {
+          "name": "retail_price",
+          "type": "DECIMAL(18,6)",
+          "nullable": false
+        },
+        {
+          "name": "department",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "sku",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "distribution_center_id",
+          "type": "BIGINT",
+          "nullable": false
+        }
+      ]
+    },
+    "users": {
+      "primary_key": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "first_name",
+          "type": "VARCHAR(256)",
+          "nullable": false
+        },
+        {
+          "name": "last_name",
+          "type": "VARCHAR(256)",
+          "nullable": false
+        },
+        {
+          "name": "email",
+          "type": "VARCHAR(512)",
+          "nullable": false
+        },
+        {
+          "name": "age",
+          "type": "SMALLINT",
+          "nullable": false
+        },
+        {
+          "name": "gender",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "state",
+          "type": "VARCHAR(256)",
+          "nullable": false
+        },
+        {
+          "name": "street_address",
+          "type": "VARCHAR(1024)",
+          "nullable": false
+        },
+        {
+          "name": "postal_code",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "city",
+          "type": "VARCHAR(256)",
+          "nullable": false
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "latitude",
+          "type": "DOUBLE PRECISION",
+          "nullable": false
+        },
+        {
+          "name": "longitude",
+          "type": "DOUBLE PRECISION",
+          "nullable": false
+        },
+        {
+          "name": "traffic_source",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "nullable": false
+        }
+      ]
+    },
+    "orders": {
+      "primary_key": "order_id",
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "user_id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "gender",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "nullable": false
+        },
+        {
+          "name": "returned_at",
+          "type": "TIMESTAMPTZ",
+          "nullable": true
+        },
+        {
+          "name": "shipped_at",
+          "type": "TIMESTAMPTZ",
+          "nullable": true
+        },
+        {
+          "name": "delivered_at",
+          "type": "TIMESTAMPTZ",
+          "nullable": true
+        },
+        {
+          "name": "num_of_item",
+          "type": "INTEGER",
+          "nullable": false
+        }
+      ]
+    },
+    "order_items": {
+      "primary_key": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "order_id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "user_id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "product_id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "inventory_item_id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "nullable": false
+        },
+        {
+          "name": "shipped_at",
+          "type": "TIMESTAMPTZ",
+          "nullable": true
+        },
+        {
+          "name": "delivered_at",
+          "type": "TIMESTAMPTZ",
+          "nullable": true
+        },
+        {
+          "name": "returned_at",
+          "type": "TIMESTAMPTZ",
+          "nullable": true
+        },
+        {
+          "name": "sale_price",
+          "type": "DECIMAL(18,6)",
+          "nullable": false
+        }
+      ]
+    },
+    "inventory_items": {
+      "primary_key": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "product_id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "nullable": false
+        },
+        {
+          "name": "sold_at",
+          "type": "TIMESTAMPTZ",
+          "nullable": true
+        },
+        {
+          "name": "cost",
+          "type": "DECIMAL(18,6)",
+          "nullable": false
+        },
+        {
+          "name": "product_category",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "product_name",
+          "type": "VARCHAR(1024)",
+          "nullable": true
+        },
+        {
+          "name": "product_brand",
+          "type": "VARCHAR(256)",
+          "nullable": true
+        },
+        {
+          "name": "product_retail_price",
+          "type": "DECIMAL(18,6)",
+          "nullable": false
+        },
+        {
+          "name": "product_department",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "product_sku",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "product_distribution_center_id",
+          "type": "BIGINT",
+          "nullable": false
+        }
+      ]
+    },
+    "events": {
+      "primary_key": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "user_id",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "sequence_number",
+          "type": "INTEGER",
+          "nullable": false
+        },
+        {
+          "name": "session_id",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "nullable": false
+        },
+        {
+          "name": "ip_address",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "city",
+          "type": "VARCHAR(256)",
+          "nullable": false
+        },
+        {
+          "name": "state",
+          "type": "VARCHAR(256)",
+          "nullable": false
+        },
+        {
+          "name": "postal_code",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "browser",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "traffic_source",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "uri",
+          "type": "VARCHAR(4096)",
+          "nullable": false
+        },
+        {
+          "name": "event_type",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        }
+      ]
+    }
+  }
+}

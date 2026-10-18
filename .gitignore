@@ -1,0 +1,41 @@
+# Data stays outside Git; keep acquisition instructions.
+/dataset/*
+!/dataset/README.md
+/outputs/
+*.parquet
+
+# Local Python/runtime files
+/.runtime_dependencies/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Credentials and machine/account-specific configuration
+.env
+.env.*
+!.env.example
+.aws/
+/code/aws_batch_config.json
+/code/aws_batch_config.local*.json
+*.pem
+*.key
+/docs/handoff1.md
+
+# Local editor/OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+
+# Binary reports/screenshots: retain Markdown reports in the repository.
+/docs/report/*.png
+/docs/report/*.jpg
+/docs/report/*.jpeg
+/docs/report/*.pdf
+/docs/report/*.docx
+~$*

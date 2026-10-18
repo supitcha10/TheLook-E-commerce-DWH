@@ -1,0 +1,4 @@
+-r requirements-curated.txt
+# Notebook editing only; core pipeline dependencies are pinned above.
+jupyterlab>=4,<5
+ipykernel>=6,<8
