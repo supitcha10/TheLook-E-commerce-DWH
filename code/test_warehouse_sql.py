@@ -1,23 +1,43 @@
 """Local contract tests only: these do not execute Redshift SQL or contact AWS."""
+"""ตรวจข้อมูล curated และความสอดคล้องกับ warehouse"""
 import json
+import os
 import re
-import sys
 import tempfile
 import unittest
 from decimal import Decimal
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / '.runtime_dependencies'))
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pandas as pd
 from prepare_aws_batch import prepare, digest_file
 
-BATCH = ROOT / 'outputs/curated/20261018T070120429459Z'
+BATCH = (ROOT / os.environ.get('CURATED_TEST_BATCH', 'outputs/curated/20261018T121017059766Z')).resolve()
 
 class WarehouseContracts(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        report_path = BATCH / 'validation_report.json'
+        if not report_path.is_file():
+            raise FileNotFoundError(f'Batch report not found: {report_path}. Set CURATED_TEST_BATCH to a curated batch directory.')
+        cls.report = json.loads(report_path.read_text(encoding='utf-8'))
+        cls.observed_at = datetime.strptime(cls.report['batch_id'], '%Y%m%dT%H%M%S%fZ').replace(tzinfo=timezone.utc).isoformat()
+
+    def batch_config(self):
+        cfg = json.loads((ROOT/'code/aws_batch_config.example.json').read_text())
+        cfg.update(bucket='local-test-not-a-deployment',
+                   iam_role='arn:aws:iam::123456789012:role/local-test-only',
+                   curated_dir=str(BATCH), observed_at=self.observed_at)
+        return cfg
+
     def test_staging_matches_actual_parquet_order_types_and_nulls(self):
+        """
+        ลำดับคอลัมน์และชนิดข้อมูล Parquet ตรงกับ staging DDL, 
+        จำนวนแถวตรงรายงาน และคอลัมน์ NOT NULL ไม่มี null
+        """
         ddl = (ROOT/'code/sql/01_staging.sql').read_text()
         report = json.loads((BATCH/'validation_report.json').read_text())
         for name, info in report['tables'].items():
@@ -41,13 +61,19 @@ class WarehouseContracts(unittest.TestCase):
                     if 'NOT NULL' in spec: self.assertEqual(table[col].null_count, 0)
 
     def test_package_manifest_and_repeatable_identity(self):
+        """
+        สร้าง package ซ้ำแล้วได้ผลเหมือนเดิม,
+        มีข้อมูล 7 ตารางและยอดเงินควบคุม 5 รายการ, 
+        manifest มีขนาดไฟล์/URL ถูกต้อง และ hash ตรงไฟล์
+        """
         with tempfile.TemporaryDirectory(dir=ROOT/'outputs') as tmp:
             tmp = Path(tmp)
-            cfg = json.loads((ROOT/'code/aws_batch_config.example.json').read_text())
-            cfg.update(bucket='local-test-not-a-deployment', iam_role='arn:aws:iam::123456789012:role/local-test-only')
+            cfg = self.batch_config()
             path = tmp/'config.json'; path.write_text(json.dumps(cfg))
             a = prepare(path, tmp/'a'); b = prepare(path, tmp/'b')
             p = json.loads((a/'package.json').read_text())
+            self.assertEqual(p['batch_id'], self.report['batch_id'])
+            self.assertEqual(p['observed_at'], self.observed_at)
             self.assertEqual(p, json.loads((b/'package.json').read_text()))
             self.assertEqual(len(p['files']),7)
             self.assertEqual(len(p['money']),5)
@@ -61,15 +87,28 @@ class WarehouseContracts(unittest.TestCase):
             self.assertIn('CALL etl.load_batch(', (a/'run_batch.sql').read_text())
 
     def test_placeholder_and_failed_batch_rejected(self):
+        """
+        config ที่ยังเป็นค่าตัวอย่าง และ batch ที่ validation ไม่ผ่าน ต้องถูกปฏิเสธ
+        """
         with tempfile.TemporaryDirectory(dir=ROOT/'outputs') as tmp:
             tmp = Path(tmp)
             with self.assertRaises(ValueError): prepare(ROOT/'code/aws_batch_config.example.json', tmp/'out')
-            cfg=json.loads((ROOT/'code/aws_batch_config.example.json').read_text())
-            cfg.update(bucket='local-test-not-a-deployment',iam_role='arn:aws:iam::123456789012:role/local-test-only',curated_dir='outputs/curated/20261018T065840511275Z')
+            failed = tmp/'failed_batch'
+            failed.mkdir()
+            report = dict(self.report, status='FAIL')
+            (failed/'validation_report.json').write_text(json.dumps(report), encoding='utf-8')
+            cfg = self.batch_config()
+            cfg['curated_dir'] = str(failed)
             path=tmp/'config.json'; path.write_text(json.dumps(cfg))
-            with self.assertRaises(ValueError): prepare(path,tmp/'out')
+            with self.assertRaisesRegex(ValueError, 'Only an accepted curated batch'):
+                prepare(path,tmp/'out')
 
     def test_bootstrap_joins_grain_money_and_calendar(self):
+        """
+        จำลอง join ด้วย pandas แล้วจำนวนแถวตรงกับ order_items ของ batch ที่เลือก,
+        ID ของ item ไม่ซ้ำ, ยอดเงินสอดคล้อง, 
+        ช่วงวันที่อยู่ในขอบเขต และสูตรระยะเวลาขนส่งปัดค่าถูกต้อง
+        """
         def read(name): return pq.read_table(BATCH/f'{name}.parquet').to_pandas()
         items=read('order_items'); orders=read('orders'); inv=read('inventory_items')
         joined=items[['id','order_id','user_id','product_id','inventory_item_id','sale_price']].merge(
@@ -79,7 +118,8 @@ class WarehouseContracts(unittest.TestCase):
         for table,fk,pk in [('users','user_id','id'),('products','product_id','id'),('distribution_centers','product_distribution_center_id','id')]:
             keys=read(table)[[pk]].rename(columns={pk:fk})
             joined=joined.merge(keys,on=fk,validate='many_to_one')
-        self.assertEqual(len(joined),181759)
+        self.assertEqual(len(items), self.report['tables']['order_items']['curated_rows'])
+        self.assertEqual(len(joined),len(items))
         self.assertTrue(joined.id.is_unique)
         self.assertEqual(sum(joined.sale_price),sum(items.sale_price))
         self.assertEqual(sum(joined.sale_price-joined.cost),sum(joined.sale_price)-sum(joined.cost))

@@ -1,4 +1,5 @@
 """Boundary checks for transformations; run with python -m unittest test_curated_pipeline."""
+"""ตรวจการแปลงข้อมูล"""
 import unittest
 from decimal import Decimal
 import curated_pipeline as cp
@@ -13,6 +14,11 @@ class CuratedConversionTests(unittest.TestCase):
         ]}
 
     def test_exact_id_rounding_and_reversible_city(self):
+        """
+        ID ตัวเลขใหญ่ยังแม่นยำ, เงินปัดทศนิยมถูกต้อง, 
+        เก็บค่าเมืองเดิมพร้อมสร้างค่า clean/flag, แปลงเวลาเป็น UTC 
+        และไม่แก้ข้อมูลต้นฉบับ
+        """
         raw=cp.pd.DataFrame({'id':['9007199254740993.0'],'city':[' NULL '],
                             'price':['1.0000005'],'created_at':['2024-01-01T07:00:00.123456+07:00']},dtype='string')
         before=raw.copy(deep=True)
@@ -29,6 +35,10 @@ class CuratedConversionTests(unittest.TestCase):
         cp.pd.testing.assert_frame_equal(raw,before)
 
     def test_rejects_overflow_missing_timezone_and_utf8_length(self):
+        """
+        ปฏิเสธ ID/เงินที่เกินขนาด, ข้อความที่เกินจำนวนไบต์,
+        เวลาที่ไม่มี timezone และเวลาที่ละเอียดเกิน microseconds
+        """
         raw=cp.pd.DataFrame({
             'id':['9223372036854775808','2','3','4','5'],
             'city':['Bangkok','Bangkok','ก'*7,'Bangkok','Bangkok'],
@@ -42,6 +52,9 @@ class CuratedConversionTests(unittest.TestCase):
         self.assertTrue(rejected['rejection_rules'].str.len().gt(0).all())
 
     def test_uncomparable_item_dates_are_null(self):
+        """
+        ถ้าไม่มีวันส่ง ให้ผลตรวจลำดับเวลาเป็น NULL; ถ้าส่งก่อนสร้าง ให้ flag เป็น True
+        """
         spec={'columns':[{'name':'id','type':'BIGINT','nullable':False},
                          {'name':'created_at','type':'TIMESTAMPTZ','nullable':False},
                          {'name':'shipped_at','type':'TIMESTAMPTZ','nullable':True}]}

@@ -78,6 +78,13 @@ Known issues ที่ต้องคงข้อมูลเดิมและ�
 
 ## ประวัติการทำงานและวิธีอัปเดต
 
+### ผลตรวจเพิ่มเติม 2026-10-18: เลือก batch สำหรับ tests จากจุดเดียว
+
+- `code/test_warehouse_sql.py` ใช้ `CURATED_TEST_BATCH` เลือก path ของ accepted batch; ค่าเริ่มต้นเป็น `20261018T121017059766Z`
+- Package config ใช้ path เดียวกัน และคำนวณ observed_at จาก batch ID ในรายงาน ไม่ต้องแก้ AWS example config เพื่อรัน tests
+- จำนวน fact ที่คาดหวังอิง order_items ของ batch ที่เลือก; รายงาน FAIL สร้างใน temporary fixture แทนการพึ่ง failed batch เก่า
+- รัน `.venv/Scripts/python.exe -m unittest discover -s code -v` กับค่าเริ่มต้น batch ใหม่: **7 tests PASS** เป็นผลในเครื่อง ยังไม่ได้ทดสอบบน AWS
+
 | วันที่ | งานที่ทำ | ผลและข้อจำกัด |
 |---|---|---|
 | 2026-10-18 | Curated และ schema dw-v1 | มี accepted batch และระบุ precision/key/SCD; ยังไม่ deploy |

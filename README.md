@@ -69,10 +69,19 @@ Copy-Item code/aws_batch_config.example.json code/aws_batch_config.json
 ## การทดสอบ
 
 - `python -m unittest discover -s code -p test_curated_pipeline.py -v`: unit tests ของการแปลงข้อมูล ไม่ต้องใช้ dataset จริง
-- `python -m unittest discover -s code -p test_warehouse_sql.py -v`: integration contract tests ในเครื่อง ต้องมี accepted batch `20261018T070120429459Z` และ failed batch `20261018T065840511275Z` ตามที่ test อ้างไว้ ชุดทดสอบนี้ยังไม่ portable สำหรับ fresh clone ที่ไม่มี batch ดังกล่าว ต้องขอ artifacts ภายในหรือปรับ fixtures อย่างมีการ review
+- `python -m unittest discover -s code -p test_warehouse_sql.py -v`: contract tests ในเครื่อง เลือก accepted batch ด้วย `CURATED_TEST_BATCH` (path จาก project root หรือ absolute path) ค่าเริ่มต้นคือ `outputs/curated/20261018T121017059766Z` ต้องมี Parquet และ validation report ของ batch ที่เลือก ส่วนรายงาน FAIL สร้างเป็น fixture ชั่วคราว ไม่ต้องมี failed batch เก่า
 - ผลใน [รายงาน local validation](docs/report/warehouse_sql_local_validation.md) เป็นผลของ batch เดิม ไม่ใช่ผลรันหลัง clone และไม่ใช่ Redshift integration test
 
 ## ก่อนนำขึ้น Git
+
+เลือก batch สำหรับ warehouse tests จากจุดเดียวใน PowerShell โดยไม่ต้องแก้ example AWS config:
+
+```powershell
+$env:CURATED_TEST_BATCH = 'outputs/curated/20261018T121017059766Z'
+.\.venv\Scripts\python.exe -m unittest discover -s code -p test_warehouse_sql.py -v
+```
+
+ทุก test ใช้ batch นี้ร่วมกัน รวมถึง config สำหรับ package; `observed_at` คำนวณจาก batch ID ใน validation report ตามรูปแบบ timestamp ของ pipeline ไม่ใช่เวลาที่รัน tests ตัวแปรนี้มีผลเฉพาะ tests และอยู่ใน PowerShell session ปัจจุบัน
 
 `.gitignore` แยก CSV, Parquet, outputs, runtime, local config, infrastructure handoff และเอกสาร binary ออก; Git จะเก็บ source, SQL, notebook, schema, baseline และ Markdown เป็นหลัก `.gitattributes` กำหนด line endings เพื่อใช้ข้ามเครื่อง
 
