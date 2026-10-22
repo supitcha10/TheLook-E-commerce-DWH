@@ -117,7 +117,7 @@
         },
         {
           "name": "street_address",
-          "type": "VARCHAR(1024)",
+          "type": "VARCHAR(2048)",
           "nullable": false
         },
         {
@@ -392,7 +392,7 @@
         },
         {
           "name": "uri",
-          "type": "VARCHAR(4096)",
+          "type": "VARCHAR(8192)",
           "nullable": false
         },
         {

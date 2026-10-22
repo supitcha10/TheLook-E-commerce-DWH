@@ -141,7 +141,7 @@ age/age_group เป็นค่าที่ snapshot ระบุ ไม่ใ�
 - เปรียบเทียบ current version แบบ null-safe ของ full_name, email, age, gender, city, city_missing_token, state, country, postal_code, traffic_source; age_group เป็น derived field
 - ไม่เปลี่ยน → ไม่เพิ่ม version และรักษา user_key
 - เปลี่ยน → ปิด version เดิมด้วย valid_to=T, is_current=false แล้วสร้าง version ใหม่ valid_from=T, valid_to=NULL, is_current=true, version_origin='OBSERVED_CHANGE'
-- ผู้ใช้ใหม่หลัง bootstrap → valid_from=T และ version_origin='OBSERVED_NEW' ไม่กำหนดขอบล่าง NULL อัตโนมัติ
+- ผู้ใช้ใหม่หลัง bootstrap → valid_from=NULL (open-start เช่น bootstrap) และ version_origin='OBSERVED_NEW' เพื่อให้ผูก fact ย้อนหลังได้
 - ช่วงเวลาเป็น [valid_from, valid_to); T คือเวลาที่สังเกตการเปลี่ยน ไม่ใช่ source effective timestamp ที่พิสูจน์แล้ว
 - ผู้ใช้หายจาก snapshot → ไม่ตีความว่า delete และไม่ปิด version จนกว่าจะมี deletion rule
 - ถ้ากฎ city เปลี่ยนจากคำยืนยันต้นทาง ให้จัดการเป็น correction พร้อม rule version ไม่ถือเป็นการย้ายเมืองจริงอัตโนมัติ
@@ -157,7 +157,7 @@ JOIN dw.dim_users u
 
 ก่อน inner join ต้องตรวจจำนวน matches ต่อ item เท่ากับหนึ่ง ถ้าไม่พบ/พบหลาย version ให้พักเพื่อทบทวน ไม่ให้ fact หายหรือเพิ่มแถวเงียบ ๆ ผู้ใช้ใหม่หลัง bootstrap ที่มี late fact ก่อน valid_from ต้อง review ไม่ fallback ไป current version โดยเดา
 
-อนุญาต valid_from=NULL เฉพาะ version แรกที่ version_origin='BOOTSTRAP_SNAPSHOT'; เมื่อปิด version นี้คง valid_from=NULL และ valid_to=T ของ version ถัดไป ช่วงเวลาต้องไม่ซ้อน และแต่ละ user มี current หนึ่งแถว
+อนุญาต valid_from=NULL สำหรับ version_origin='BOOTSTRAP_SNAPSHOT' และ 'OBSERVED_NEW'; เมื่อปิด version นี้คง valid_from=NULL และ valid_to=T ของ version ถัดไป ช่วงเวลาต้องไม่ซ้อน และแต่ละ user มี current หนึ่งแถว
 
 ## 6. Keys และ idempotent loading
 
@@ -181,7 +181,7 @@ SET timezone TO 'UTC';
 
 CREATE TABLE dw.dim_date (
     date_key INTEGER NOT NULL PRIMARY KEY,
-    full_date DATE NOT NULL,
+    full_date DATE NOT NULL UNIQUE,
     day_of_week SMALLINT NOT NULL,
     day_name VARCHAR(10) NOT NULL,
     day_of_month SMALLINT NOT NULL,

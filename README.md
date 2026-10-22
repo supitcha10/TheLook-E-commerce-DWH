@@ -40,16 +40,89 @@ project/
 
 ใช้ Python 3.12 จาก project root (ตัวอย่าง PowerShell):
 
+**วิธีที่ 1: Activate ครั้งเดียว (แนะนำสำหรับพัฒนาแบบ interactive)**
+```powershell
+# สร้าง venv (ครั้งแรกเท่านั้น)
+python -m venv .venv
+
+# Activate
+.\.venv\Scripts\Activate.ps1
+
+# ตั้งแต่นี้เป็นต้นไป ใช้ python โดยตรงได้เลย
+python -m pip install -r code/requirements-dev.txt
+python -m unittest discover -s code -p test_curated_pipeline.py -v
+python code/curated_pipeline.py --batch-id v1-baseline
+python -m jupyterlab code/project.ipynb
+python code/build_warehouse_sql.py
+```
+
+> **หมายเหตุ**: ถ้า PowerShell บล็อก script ให้รัน `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` ก่อนครั้งแรก
+
+**วิธีที่ 2: ใช้ full path ทุกคำสั่ง (เหมาะสำหรับ CI/CD หรือ script ที่ไม่ได้ activate)**
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r code/requirements-dev.txt
 .\.venv\Scripts\python.exe -m unittest discover -s code -p test_curated_pipeline.py -v
 ```
 
+---
+
+### สำหรับ Git Bash / WSL / Linux / macOS
+
+**วิธีที่ 1: Activate ครั้งเดียว (แนะนำสำหรับพัฒนาแบบ interactive)**
+```bash
+# สร้าง venv (ครั้งแรกเท่านั้น)
+python -m venv .venv
+
+# Activate
+source .venv/bin/activate
+
+# ตั้งแต่นี้เป็นต้นไป ใช้ python โดยตรงได้เลย
+python -m pip install -r code/requirements-dev.txt
+python -m unittest discover -s code -p test_curated_pipeline.py -v
+python code/curated_pipeline.py --batch-id v1-baseline
+python -m jupyterlab code/project.ipynb
+python code/build_warehouse_sql.py
+```
+
+**วิธีที่ 2: ใช้ full path ทุกคำสั่ง**
+```bash
+python -m venv .venv
+.venv/bin/python -m pip install -r code/requirements-dev.txt
+.venv/bin/python -m unittest discover -s code -p test_curated_pipeline.py -v
+```
+
+---
+
 เตรียม CSV ตาม [คำแนะนำ dataset](dataset/README.md) แล้วรัน:
 
+**วิธีที่ 1 (Activate แล้ว):**
 ```powershell
+# รันปกติ (auto timestamp batch ID)
+python code/curated_pipeline.py
+
+# รันตั้งชื่อ batch เอง (เช่น v1-baseline)
+python code/curated_pipeline.py --batch-id v1-baseline
+```
+
+**วิธีที่ 2 (Full path):**
+```powershell
+# รันปกติ (auto timestamp batch ID)
 .\.venv\Scripts\python.exe code/curated_pipeline.py
+
+# รันตั้งชื่อ batch เอง (เช่น v1-baseline)
+.\.venv\Scripts\python.exe code/curated_pipeline.py --batch-id v1-baseline
+```
+
+จากนั้นเปิด notebook:
+
+**วิธีที่ 1 (Activate แล้ว):**
+```powershell
+python -m jupyterlab code/project.ipynb
+```
+
+**วิธีที่ 2 (Full path):**
+```powershell
 .\.venv\Scripts\python.exe -m jupyterlab code/project.ipynb
 ```
 
@@ -59,6 +132,13 @@ Pipeline สร้าง batch ใหม่ใต้ `outputs/curated/` ตร�
 
 อ่าน [คู่มือ SQL](code/sql/README.md) ก่อนใช้งาน สร้าง SQL จากต้นฉบับด้วย:
 
+**วิธีที่ 1 (Activate แล้ว):**
+```powershell
+python code/build_warehouse_sql.py
+Copy-Item code/aws_batch_config.example.json code/aws_batch_config.json
+```
+
+**วิธีที่ 2 (Full path):**
 ```powershell
 .\.venv\Scripts\python.exe code/build_warehouse_sql.py
 Copy-Item code/aws_batch_config.example.json code/aws_batch_config.json
@@ -68,6 +148,18 @@ Copy-Item code/aws_batch_config.example.json code/aws_batch_config.json
 
 ## การทดสอบ
 
+**วิธีที่ 1 (Activate แล้ว):**
+```powershell
+python -m unittest discover -s code -p test_curated_pipeline.py -v
+python -m unittest discover -s code -p test_warehouse_sql.py -v
+```
+
+**วิธีที่ 2 (Full path):**
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s code -p test_curated_pipeline.py -v
+.\.venv\Scripts\python.exe -m unittest discover -s code -p test_warehouse_sql.py -v
+```
+
 - `python -m unittest discover -s code -p test_curated_pipeline.py -v`: unit tests ของการแปลงข้อมูล ไม่ต้องใช้ dataset จริง
 - `python -m unittest discover -s code -p test_warehouse_sql.py -v`: contract tests ในเครื่อง เลือก accepted batch ด้วย `CURATED_TEST_BATCH` (path จาก project root หรือ absolute path) ค่าเริ่มต้นคือ `outputs/curated/20261018T121017059766Z` ต้องมี Parquet และ validation report ของ batch ที่เลือก ส่วนรายงาน FAIL สร้างเป็น fixture ชั่วคราว ไม่ต้องมี failed batch เก่า
 - ผลใน [รายงาน local validation](docs/report/warehouse_sql_local_validation.md) เป็นผลของ batch เดิม ไม่ใช่ผลรันหลัง clone และไม่ใช่ Redshift integration test
@@ -76,6 +168,13 @@ Copy-Item code/aws_batch_config.example.json code/aws_batch_config.json
 
 เลือก batch สำหรับ warehouse tests จากจุดเดียวใน PowerShell โดยไม่ต้องแก้ example AWS config:
 
+**วิธีที่ 1 (Activate แล้ว):**
+```powershell
+$env:CURATED_TEST_BATCH = 'outputs/curated/20261018T121017059766Z'
+python -m unittest discover -s code -p test_warehouse_sql.py -v
+```
+
+**วิธีที่ 2 (Full path):**
 ```powershell
 $env:CURATED_TEST_BATCH = 'outputs/curated/20261018T121017059766Z'
 .\.venv\Scripts\python.exe -m unittest discover -s code -p test_warehouse_sql.py -v

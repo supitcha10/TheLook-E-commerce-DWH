@@ -4,7 +4,7 @@ SET timezone TO 'UTC';
 
 CREATE TABLE dw.dim_date (
     date_key INTEGER NOT NULL PRIMARY KEY,
-    full_date DATE NOT NULL,
+    full_date DATE NOT NULL UNIQUE,
     day_of_week SMALLINT NOT NULL,
     day_name VARCHAR(10) NOT NULL,
     day_of_month SMALLINT NOT NULL,

@@ -29,7 +29,7 @@ CREATE TABLE stg.users (
     age SMALLINT NOT NULL,
     gender VARCHAR(32) NOT NULL,
     state VARCHAR(256) NOT NULL,
-    street_address VARCHAR(1024) NOT NULL,
+    street_address VARCHAR(2048) NOT NULL,
     postal_code VARCHAR(32) NOT NULL,
     city VARCHAR(256) NOT NULL,
     country VARCHAR(128) NOT NULL,
@@ -96,7 +96,7 @@ CREATE TABLE stg.events (
     postal_code VARCHAR(32) NOT NULL,
     browser VARCHAR(128) NOT NULL,
     traffic_source VARCHAR(64) NOT NULL,
-    uri VARCHAR(4096) NOT NULL,
+    uri VARCHAR(8192) NOT NULL,
     event_type VARCHAR(64) NOT NULL,
     city_clean VARCHAR(256),
     city_missing_token BOOLEAN NOT NULL

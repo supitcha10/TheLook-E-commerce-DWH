@@ -24,20 +24,22 @@ flowchart TD
     G --> D
     E -->|ไม่มี| H[ออกแบบ staging และ star schema]
     H --> I[ตรวจสิทธิ์ Lab เครือข่าย และงบ]
-    I --> J[เก็บ CSV ต้นฉบับใน S3 raw พร้อม manifest]
-    J --> K[ลงทะเบียน schema ใน Glue Data Catalog]
-    K --> L[Glue ETL ตรวจและแปลงข้อมูล]
-    L --> M[S3 curated รูปแบบ Parquet]
-    L --> Q[Quarantine และรายงานแถวผิดกฎ]
-    Q --> F
-    M --> N[โหลดเข้า Redshift staging]
+    I --> J[Curated pipeline รันในเครื่อง (Python) → Parquet]
+    J --> K[เก็บ CSV ต้นฉบับใน S3 raw พร้อม manifest]
+    K --> L[Upload Parquet ไป S3 curated]
+    L --> M[ลงทะเบียน schema ใน Glue Data Catalog (optional)]
+    M --> N[โหลดเข้า Redshift staging (COPY)]
     N --> O[สร้างและโหลด dimensions กับ facts]
     O --> P{ผ่านการตรวจรับหรือไม่}
-    P -->|ไม่ผ่าน| R[ตรวจ log และแก้กฎหรือโค้ด]
-    R --> L
-    P -->|ผ่าน| S[เผยแพร่ตารางหรือ views ให้ทีม BI]
-    S --> T[บันทึกรอบโหลด เฝ้าดูข้อผิดพลาด และควบคุมค่าใช้จ่าย]
+    P -->|ไม่ผ่าน| Q[ตรวจ log และแก้กฎหรือโค้ด]
+    Q --> J
+    P -->|ผ่าน| R[เผยแพร่ตารางหรือ views ให้ทีม BI]
+    R --> S[บันทึกรอบโหลด เฝ้าดูข้อผิดพลาด และควบคุมค่าใช้จ่าย]
 ```
+
+> **หมายเหตุ:** โฟลว์ข้างต้นเป็นสถาปัตยกรรมเต็มรูปแบบ (S3 raw → Glue ETL → curated) สำหรับ production pipeline  
+> **สถานะจริงตอนนี้:** Curated ทำในเครื่องด้วย `code/curated_pipeline.py` แล้ว upload Parquet ไป S3 curated โดยตรง  
+> Glue ETL ยังไม่ได้สร้าง (รอตกลงกับทีม infra ว่าบังคับใช้ Glue หรือไม่) — ดู [คู่มือ SQL](../code/sql/README.md) สำหรับขั้นตอนโหลดปัจจุบัน
 
 การผ่านจุดตรวจคุณภาพไม่ได้หมายความว่าต้องไม่มีค่าว่างหรือ warning เลย แต่ทุกปัญหาต้องมีวิธีจัดการชัดเจน และไม่มีข้อผิดพลาดที่ทำให้ผลรายงานคลาดเคลื่อนโดยไม่ทราบสาเหตุ Quarantine ต้องถูกนับและรายงาน ไม่ใช่ทิ้งแถวแล้วประกาศว่าผ่าน
 
@@ -62,34 +64,36 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    CSV[CSV ใน dataset] --> RAW[S3 raw]
-    RAW --> ETL[Glue ETL]
-    CAT[Glue Data Catalog] -. schema .-> ETL
-    ETL --> CUR[S3 curated: Parquet]
-    ETL --> BAD[S3 quarantine]
-    CUR --> STG[Redshift staging]
+    CSV[CSV ใน dataset] --> LOCAL[Curated Pipeline (Python local)]
+    LOCAL --> RAW[S3 raw: CSV + manifest]
+    LOCAL --> CUR[S3 curated: Parquet]
+    LOCAL --> BAD[S3 quarantine: rejected rows]
+    CUR --> STG[Redshift staging (COPY)]
     STG --> DW[Dimensions และ Facts]
     DW --> VIEW[Reporting views]
     VIEW --> BI[เครื่องมือ BI ที่ Lab อนุญาต]
+    CAT[Glue Data Catalog] -. schema .-> STG
 ```
 
-- **S3 raw:** เก็บต้นฉบับ แยกตามตารางและ batch เพื่ออ่านซ้ำหรือตรวจย้อนหลัง
-- **Glue Data Catalog:** เก็บ metadata และ schema ไม่ใช่พื้นที่เก็บข้อมูลธุรกรรมแทน S3
-- **Glue ETL:** อ่าน ตรวจ แปลงชนิด และเขียนผลที่ผ่านกฎลง curated
-- **S3 curated:** เก็บข้อมูลที่แปลงแล้วก่อนโหลดเข้า warehouse
-- **S3 quarantine:** เก็บแถวที่ไม่ผ่าน พร้อม rule ID และเหตุผล
-- **Redshift staging:** พักข้อมูลแต่ละรอบเพื่อตรวจก่อนเผยแพร่
+- **S3 raw:** เก็บต้นฉบับ CSV แยกตามตารางและ batch พร้อม manifest/checksum
+- **Curated Pipeline (local):** `code/curated_pipeline.py` — อ่าน CSV, ตรวจ DQ, แปลงชนิด, เขียน Parquet + validation report (รันในเครื่อง ไม่ใช้ Glue ETL)
+- **S3 quarantine:** เก็บแถวที่ไม่ผ่านกฎ พร้อม rule ID และเหตุผล (จาก curated pipeline)
+- **S3 curated:** เก็บ Parquet ที่ผ่าน validation แล้ว รอโหลดเข้า Redshift
+- **Glue Data Catalog:** (optional) ลงทะเบียน schema สำหรับ query federation; ไม่ได้ใช้รัน ETL ตอนนี้
+- **Redshift staging:** พักข้อมูลแต่ละรอบ (COPY จาก Parquet) เพื่อตรวจก่อนเผยแพร่
 - **Dimensions/Facts และ views:** จัดข้อมูลตามการวิเคราะห์และนิยามที่ตกลงกับทีม BI
 
-การโหลดจาก curated เข้า Redshift เลือกใช้ COPY หรือวิธีผ่าน Glue ตามสิทธิ์และวิธีเชื่อมต่อที่ทดสอบแล้ว ไม่จำเป็นต้องสร้าง Glue connection สำหรับงานที่อ่าน/เขียน S3 อย่างเดียว ส่วน Redshift ให้เลือก Provisioned หรือ Serverless อย่างใดอย่างหนึ่ง แล้วเตรียม networking ตามรูปแบบนั้น
+> **สถาปัตยกรรมเต็มรูปแบบ (อนาคต):** อาจย้าย Curated Pipeline ไป Glue ETL หากทีม infra กำหนด — โค้ดและกฎพร้อมต่อยอดได้
+
+การโหลดจาก curated เข้า Redshift ใช้ **COPY จาก Parquet** (manifest-based) ตาม `code/sql/03_load_batch.sql` ไม่จำเป็นต้องสร้าง Glue connection สำหรับรอบนี้ ส่วน Redshift ให้เลือก Provisioned หรือ Serverless อย่างใดอย่างหนึ่ง แล้วเตรียม networking ตามรูปแบบนั้น
 
 ## 4. โมเดลเริ่มต้นสำหรับรายงานยอดขาย
 
 | ตารางปลายทางที่เสนอ | แหล่งข้อมูล | Grain / หมายเหตุ |
 |---|---|---|
-| `dim_customer` | users | หนึ่งแถวต่อผู้ใช้ใน snapshot เริ่มต้น |
-| `dim_product` | products | หนึ่งแถวต่อรหัสสินค้าใน snapshot เริ่มต้น |
-| `dim_distribution_center` | distribution_centers | หนึ่งแถวต่อศูนย์กระจายสินค้า |
+| `dim_users` | users | หนึ่งแถวต่อผู้ใช้ใน snapshot เริ่มต้น |
+| `dim_products` | products | หนึ่งแถวต่อรหัสสินค้าใน snapshot เริ่มต้น |
+| `dim_distribution_centers` | distribution_centers | หนึ่งแถวต่อศูนย์กระจายสินค้า |
 | `dim_date` | สร้างจากช่วงวันที่จริง | หนึ่งแถวต่อวัน ใช้หลายบทบาท เช่น วันสั่งและวันส่ง |
 | `fact_sales` | order_items + orders + inventory_items | หนึ่งแถวต่อ order_items.id; เก็บสถานะไว้และใช้ metric/view กำหนดรายการที่นับเป็นยอดขาย |
 | `fact_events` ระยะถัดไป | events | หนึ่งแถวต่อเหตุการณ์ แยกจาก fact_sales |
@@ -132,17 +136,26 @@ flowchart LR
 | โหลดข้อมูล ดูตัวอย่าง และตรวจคุณภาพ | มีโค้ดแล้วใน [project.ipynb](../code/project.ipynb) |
 | ผลตรวจรอบที่ทดสอบ | ตรวจ 207 กฎ ไม่พบ FAIL มี WARN 3 กฎ; ไม่ใช่การรับรองคุณภาพทุกด้าน |
 | ยืนยันนิยามยอดขาย สกุลเงิน และกติกาแก้ปัญหา | ยังต้องตกลงก่อนใช้จริง |
-| Cleaning/curated pipeline, DDL และ AWS ETL | ยังต้องจัดทำและทดสอบ |
+| Cleaning/curated pipeline | **เสร็จแล้ว** — `code/curated_pipeline.py` ผ่าน validation 52 checks (PASS_WITH_KNOWN_ISSUES) |
+| Staging/DW DDL (dw-v1) | **เสร็จแล้ว** — `code/sql/01_staging.sql`, `02_warehouse.sql` |
+| Load procedure (atomic, SCD2, idempotent) | **เสร็จแล้ว** — `code/sql/03_load_batch.sql`, `00_control.sql`, `04_post_load_checks.sql` |
+| Local contract tests | **ผ่าน 7 tests** — `code/test_warehouse_sql.py` (staging schema, package manifest, bootstrap joins, grain/money) |
+| Package generator & runbook | **เสร็จแล้ว** — `code/prepare_aws_batch.py`, `code/sql/README.md` |
+| Git-ready files | **พร้อม** — `.gitignore`, `.gitattributes`, `README.md`, `requirements-dev.txt`; notebook outputs cleared |
 
-**งานถัดไปทันที:** ทบทวน warning ก่อนเขียนโค้ด cleaning ได้แก่
+**สถานะรอบนี้:** พร้อมขึ้น AWS — ตรวจทรัพยากร/สิทธิ์จริง → กรอก config → upload batch → install SQL → run batch → verify
 
-- `users.city` มีข้อความคล้าย null 958 แถว
-- `events.city` มีข้อความคล้าย null 23,080 แถว
-- `order_items` มี 35,872 แถวที่ shipped_at ก่อน created_at ในแถวที่มีวันที่ทั้งคู่และ parse ได้
+**งานถัดไป (ขึ้น AWS):**
 
-ตรวจค่าจริงและความหมายก่อนตัดสินว่า city ต้องเปลี่ยนเป็น NULL หรือไม่ และห้ามสลับ/เติมวันที่เพื่อให้ลำดับดูถูกต้อง หากยังอธิบายไม่ได้ให้เก็บธงคุณภาพ แยกผลกระทบต่อ metric และตกลงว่าจะพักข้อมูลส่วนใด
+1. ตรวจ AWS resources และสิทธิ์จากบัญชีจริง (S3 bucket/prefix, Redshift IAM role, network)
+2. กรอก config จริงใน `code/aws_batch_config.json` และ generate package ด้วย `prepare_aws_batch.py`
+3. Upload batch ไป S3 immutable prefix ตรวจขนาดและ hash
+4. ติดตั้ง SQL 00–03 ใน Redshift, รัน `run_batch.sql`, ตรวจผลด้วย `04_post_load_checks.sql`
+5. ทดสอบ retry, SCD boundaries, rollback ด้วย fixtures แยก
+6. Glue/orchestration/monitoring ตามสถาปัตยกรรมและ metric ที่ตกลงกับทีมรายงาน
+7. Reporting views (net sales, returns, cancellations) และ BI dashboard
 
-หลังตกลงแล้วจึงทำ cleaning บนสำเนาหรือ staging เขียน curated และตรวจจำนวนแถว/ยอดเงินเทียบกับ raw จากนั้นจึงนำ logic ที่ทดสอบแล้วไปใช้ใน Glue
+การถามต้นทางเรื่อง known issues (city null, item date order) ทำคู่ขนานได้ — ระหว่างนี้ยังใช้กฎ provisional-v1 ที่ย้อนตรวจได้
 
 ## 8. เกณฑ์ถือว่างานทีม DW รอบแรกเสร็จ
 

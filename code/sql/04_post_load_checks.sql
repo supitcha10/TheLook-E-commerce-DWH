@@ -22,6 +22,14 @@ SELECT 'staging' AS source,COUNT(*) row_count,SUM(i.sale_price) sale_price,SUM(i
 UNION ALL
 SELECT 'warehouse',COUNT(*),SUM(sale_price),SUM(product_cost) FROM dw.fact_sales;
 
+-- Distribution Center comparison: products.distribution_center_id vs inventory_items.product_distribution_center_id
+-- Shows how many products have different DC in products vs inventory_items (Dictionary T14)
+SELECT 'dc_comparison' AS check_name,
+       COUNT(*) AS mismatched_products,
+       SUM(CASE WHEN p.distribution_center_id <> i.product_distribution_center_id THEN 1 ELSE 0 END) AS drift_count
+FROM stg.products p
+JOIN stg.inventory_items i ON i.product_id = p.id;
+
 -- Status here is the item status; source order status remains in stg.orders.
 SELECT status,COUNT(*) item_rows,COUNT(DISTINCT order_id) orders,SUM(sale_price) item_price_total
 FROM dw.fact_sales GROUP BY status ORDER BY status;

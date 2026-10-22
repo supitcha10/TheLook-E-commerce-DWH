@@ -327,10 +327,10 @@ erDiagram
 
 | ตารางปลายทาง | แหล่งข้อมูลหลัก | ระดับข้อมูล / หมายเหตุ |
 |---|---|---|
-| `dim_customer` | users | หนึ่งแถวต่อ user ใน snapshot เริ่มต้น เลือก attributes เท่าที่รายงานใช้ |
-| `dim_product` | products | หนึ่งแถวต่อ product ใน snapshot เริ่มต้น |
+| `dim_users` | users | หนึ่งแถวต่อ user ใน snapshot เริ่มต้น เลือก attributes เท่าที่รายงานใช้ |
+| `dim_products` | products | หนึ่งแถวต่อ product ใน snapshot เริ่มต้น |
 | `dim_date` | สร้างจากช่วงวันที่ที่ตรวจจริง | หนึ่งแถวต่อวัน; รองรับหลายบทบาท เช่น order date, ship date, return date |
-| `dim_distribution_center` | distribution_centers | หนึ่งแถวต่อศูนย์กระจายสินค้า |
+| `dim_distribution_centers` | distribution_centers | หนึ่งแถวต่อศูนย์กระจายสินค้า |
 | `fact_sales` | order_items + orders + inventory_items | หนึ่งแถวต่อ order item; ตรวจจำนวนแถวหลัง join ต้องไม่เพิ่ม |
 | `fact_events` ในระยะถัดไป | events | หนึ่งแถวต่อ event; แยกจาก fact_sales |
 

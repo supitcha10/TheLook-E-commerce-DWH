@@ -56,6 +56,16 @@
 
 -- GENERATED_STAGE_CHECKS
 
+    -- Compare products.distribution_center_id vs inventory_items.product_distribution_center_id
+    -- Dictionary T14: do not assume they match; record drift as KNOWN_ISSUE
+    SELECT COUNT(*) INTO v_n FROM stg.inventory_items inv
+        JOIN stg.products p ON p.id=inv.product_id
+        WHERE inv.product_distribution_center_id <> p.distribution_center_id;
+    INSERT INTO etl.batch_checks VALUES(p_batch_id,'distribution_center_drift',
+        CASE WHEN v_n=0 THEN 'PASS' ELSE 'KNOWN_ISSUE' END,
+        v_n,'products.distribution_center_id vs inventory_items.product_distribution_center_id mismatch');
+
+
     FOR r IN SELECT * FROM expected_money LOOP
         EXECUTE 'SELECT SUM(' || QUOTE_IDENT(r.column_name) || ') FROM stg.' || QUOTE_IDENT(r.table_name) INTO v_sum;
         IF v_sum IS NULL OR v_sum<>r.expected_sum THEN RAISE EXCEPTION 'Staging monetary reconciliation failed'; END IF;
@@ -106,7 +116,7 @@
     INSERT INTO dw.dim_users(user_id,full_name,email,age,age_group,gender,city,city_missing_token,state,country,
         postal_code,traffic_source,valid_from,valid_to,is_current,version_origin,observed_at,source_batch_id,rule_version)
     SELECT user_id,full_name,email,age,age_group,gender,city,city_missing_token,state,country,postal_code,traffic_source,
-        CASE WHEN v_bootstrap THEN NULL::TIMESTAMPTZ ELSE p_observed_at END,NULL::TIMESTAMPTZ,TRUE,
+        CASE WHEN v_bootstrap OR old_user_key IS NULL THEN NULL::TIMESTAMPTZ ELSE p_observed_at END,NULL::TIMESTAMPTZ,TRUE,
         CASE WHEN v_bootstrap THEN 'BOOTSTRAP_SNAPSHOT' WHEN old_user_key IS NULL THEN 'OBSERVED_NEW' ELSE 'OBSERVED_CHANGE' END,
         p_observed_at,p_batch_id,p_rule_version FROM tmp_user_changes;
 
@@ -129,10 +139,10 @@
       SELECT s.id,s.name,s.latitude,s.longitude,p_batch_id,p_observed_at FROM stg.distribution_centers s
       LEFT JOIN dw.dim_distribution_centers d ON d.distribution_center_id=s.id WHERE d.distribution_center_key IS NULL;
 
-    -- SCD invariants and overlap; NULL lower boundary belongs only to initial bootstrap.
+    -- SCD invariants and overlap; NULL lower boundary belongs to bootstrap and observed-new users.
     IF EXISTS(SELECT user_id FROM dw.dim_users GROUP BY user_id HAVING SUM(CASE WHEN is_current THEN 1 ELSE 0 END)<>1)
        OR EXISTS(SELECT 1 FROM dw.dim_users WHERE is_current<>(valid_to IS NULL)
-           OR (valid_from IS NULL AND version_origin<>'BOOTSTRAP_SNAPSHOT')
+           OR (valid_from IS NULL AND version_origin NOT IN ('BOOTSTRAP_SNAPSHOT','OBSERVED_NEW'))
            OR (valid_from IS NOT NULL AND valid_to<=valid_from))
        OR EXISTS(SELECT 1 FROM dw.dim_users a JOIN dw.dim_users b ON a.user_id=b.user_id AND a.user_key<b.user_key
            WHERE (a.valid_from IS NULL OR b.valid_to IS NULL OR a.valid_from<b.valid_to)
@@ -152,9 +162,11 @@
     CREATE TEMP TABLE tmp_digits AS SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
         UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9;
     DROP TABLE IF EXISTS tmp_calendar;
-    CREATE TEMP TABLE tmp_calendar AS SELECT CAST(DATEADD(day,a.n+10*b.n+100*c.n+1000*d.n+10000*e.n,v_min_date) AS DATE) full_date
+    -- Use EXECUTE for CTAS with PL/pgSQL variable (Redshift restriction)
+    EXECUTE 'CREATE TEMP TABLE tmp_calendar AS SELECT CAST(DATEADD(day,a.n+10*b.n+100*c.n+1000*d.n+10000*e.n,'
+        || QUOTE_LITERAL(v_min_date) || ') AS DATE) full_date
         FROM tmp_digits a CROSS JOIN tmp_digits b CROSS JOIN tmp_digits c CROSS JOIN tmp_digits d CROSS JOIN tmp_digits e
-        WHERE a.n+10*b.n+100*c.n+1000*d.n+10000*e.n<=v_days;
+        WHERE a.n+10*b.n+100*c.n+1000*d.n+10000*e.n<=' || v_days;
     INSERT INTO dw.dim_date(date_key,full_date,day_of_week,day_name,day_of_month,month,month_name,quarter,year,is_weekend)
     SELECT TO_CHAR(c.full_date,'YYYYMMDD')::INTEGER,c.full_date,
         CASE WHEN DATE_PART(dow,c.full_date)=0 THEN 7 ELSE DATE_PART(dow,c.full_date)::SMALLINT END,
@@ -186,8 +198,8 @@
         CAST(i.sale_price-inv.cost AS DECIMAL(19,6)),CAST(inv.product_retail_price-i.sale_price AS DECIMAL(19,6)),NULL::DECIMAL(19,6),
         -- Exact positive HALF_UP to 1e-6 day: elapsed microseconds / 86400 gives millionths of a day.
         CASE WHEN o.shipped_at IS NOT NULL AND o.delivered_at>=o.shipped_at THEN
-            CAST(FLOOR((DATEDIFF(microsecond,o.shipped_at,o.delivered_at)::DECIMAL(20,0)+43200)/86400)
-                 /1000000.0 AS DECIMAL(18,6)) ELSE NULL::DECIMAL(18,6) END,
+            CAST(FLOOR((EXTRACT(epoch FROM (o.delivered_at - o.shipped_at)) * 1000000 + 43200) / 86400)
+                 / 1000000.0 AS DECIMAL(18,6)) ELSE NULL::DECIMAL(18,6) END,
         i.item_shipped_before_created,i.item_dates_comparable,p_batch_id,p_rule_version,p_observed_at
     FROM stg.order_items i JOIN stg.orders o ON o.order_id=i.order_id
     JOIN stg.inventory_items inv ON inv.id=i.inventory_item_id

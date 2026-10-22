@@ -61,15 +61,15 @@ def build():
 -- expected_inputs and expected_money are session TEMP tables created by rendered run_batch.sql.
 -- Only this procedure is the supported writer of stg/dw; do not call pieces independently.
 CREATE OR REPLACE PROCEDURE etl.load_batch(
-    p_batch_id VARCHAR(64), p_package_hash VARCHAR(64), p_observed_at TIMESTAMPTZ,
-    p_iam_role VARCHAR(512), p_schema_version VARCHAR(32), p_rule_version VARCHAR(64))
+    p_batch_id VARCHAR, p_package_hash VARCHAR, p_observed_at TIMESTAMPTZ,
+    p_iam_role VARCHAR, p_schema_version VARCHAR, p_rule_version VARCHAR)
 AS $$
 DECLARE
     r RECORD;
     v_n BIGINT;
     v_expected BIGINT;
     v_sum DECIMAL(38,6);
-    v_old_hash VARCHAR(64);
+    v_old_hash VARCHAR;
     v_old_time TIMESTAMPTZ;
     v_bootstrap BOOLEAN;
     v_min_date DATE;
@@ -81,8 +81,10 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
     -- In default mode Redshift rolls back the failed transaction, logs in a new
     -- transaction, commits the handler, then automatically rethrows the error.
+    -- Explicit RAISE ensures re-throw even if behavior changes.
     INSERT INTO etl.batch_attempts(batch_id, attempted_at, status, detail)
     VALUES (p_batch_id, GETDATE(), 'FAILED', LEFT(SQLERRM, 4000));
+    RAISE;
 END;
 $$ LANGUAGE plpgsql;
 """

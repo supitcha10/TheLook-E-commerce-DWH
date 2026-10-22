@@ -153,11 +153,11 @@ def convert_chunk(raw, spec, name):
         }
     return table,quarantine,controls,column_stats
 
-def run_curated(project_dir=ROOT, chunk_size=250_000):
+def run_curated(project_dir=ROOT, chunk_size=250_000, batch_id=None):
     project_dir = Path(project_dir).resolve()
     schema = json.loads((project_dir/'code/curated_schema.json').read_text(encoding='utf-8'))
     baseline = json.loads((project_dir/'code/dq_known_issues_baseline.json').read_text(encoding='utf-8'))
-    batch_id = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
+    batch_id = batch_id or datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
     output = project_dir/'outputs'/'curated'/batch_id
     output.mkdir(parents=True,exist_ok=False)
     report = {'batch_id':batch_id,'schema_version':schema['version'],'rule_version':'provisional-v1',
@@ -298,6 +298,10 @@ def run_curated(project_dir=ROOT, chunk_size=250_000):
     return output,report
 
 if __name__ == '__main__':
-    folder,result=run_curated()
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument('--batch-id', help='Custom batch ID (default: auto timestamp)')
+    args = p.parse_args()
+    folder, result = run_curated(batch_id=args.batch_id)
     print(f"RESULT_PATH={folder}")
     print(f"STATUS={result['status']}")

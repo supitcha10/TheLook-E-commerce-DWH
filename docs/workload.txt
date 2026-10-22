@@ -91,10 +91,10 @@ Redshift
 ตัวอย่าง:
 
 Dimensions
-├── dim_customer
-├── dim_product
+├── dim_users
+├── dim_products
 ├── dim_date
-└── dim_distribution_center
+└── dim_distribution_centers
 
 Facts
 ├── fact_sales
