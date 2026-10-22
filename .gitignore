@@ -39,3 +39,6 @@ Desktop.ini
 /docs/report/*.pdf
 /docs/report/*.docx
 ~$*
+# Temporary files
+mywork.md
+next_step.md
