@@ -153,14 +153,16 @@ def convert_chunk(raw, spec, name):
         }
     return table,quarantine,controls,column_stats
 
-def run_curated(project_dir=ROOT, chunk_size=250_000, batch_id=None):
+def run_curated(project_dir=ROOT, chunk_size=250_000):
     project_dir = Path(project_dir).resolve()
     schema = json.loads((project_dir/'code/curated_schema.json').read_text(encoding='utf-8'))
     baseline = json.loads((project_dir/'code/dq_known_issues_baseline.json').read_text(encoding='utf-8'))
-    batch_id = batch_id or datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
+    now = datetime.now(timezone.utc)
+    batch_id = now.strftime('%Y%m%dT%H%M%S%fZ')
+    observed_at = now.isoformat()
     output = project_dir/'outputs'/'curated'/batch_id
     output.mkdir(parents=True,exist_ok=False)
-    report = {'batch_id':batch_id,'schema_version':schema['version'],'rule_version':'provisional-v1',
+    report = {'batch_id':batch_id,'observed_at':observed_at,'schema_version':schema['version'],'rule_version':'provisional-v1',
               'status':'RUNNING','source_confirmation':'pending','tables':{},'checks':[], 'known_issues':[]}
     def check(name,passed,detail):
         report['checks'].append({'check':name,'status':'PASS' if passed else 'FAIL','detail':detail})
@@ -298,10 +300,6 @@ def run_curated(project_dir=ROOT, chunk_size=250_000, batch_id=None):
     return output,report
 
 if __name__ == '__main__':
-    import argparse
-    p = argparse.ArgumentParser()
-    p.add_argument('--batch-id', help='Custom batch ID (default: auto timestamp)')
-    args = p.parse_args()
-    folder, result = run_curated(batch_id=args.batch_id)
+    folder, result = run_curated()
     print(f"RESULT_PATH={folder}")
     print(f"STATUS={result['status']}")

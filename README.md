@@ -96,23 +96,45 @@ python -m venv .venv
 
 เตรียม CSV ตาม [คำแนะนำ dataset](dataset/README.md) แล้วรัน:
 
+### รัน Curated Pipeline (Auto Timestamp Only)
+
+Pipeline สร้าง Batch ID แบบ timestamp อัตโนมัติ (รูปแบบ `YYYYMMDDTHHMMSSffffffZ`) เพื่อให้ `observed_at` เพิ่มขึ้นเรื่อยๆ ตามลำดับเวลาจริง — **รองรับ AWS Deployment และ NO_OP logic ได้โดยอัตโนมัติ**
+
+> **หมายเหตุ**: `observed_at` ถูกบันทึกใน `validation_report.json` อัตโนมัติ
+
 **วิธีที่ 1 (Activate แล้ว):**
 ```powershell
-# รันปกติ (auto timestamp batch ID)
 python code/curated_pipeline.py
-
-# รันตั้งชื่อ batch เอง (เช่น v1-baseline)
-python code/curated_pipeline.py --batch-id v1-baseline
 ```
 
 **วิธีที่ 2 (Full path):**
 ```powershell
-# รันปกติ (auto timestamp batch ID)
 .\.venv\Scripts\python.exe code/curated_pipeline.py
-
-# รันตั้งชื่อ batch เอง (เช่น v1-baseline)
-.\.venv\Scripts\python.exe code/curated_pipeline.py --batch-id v1-baseline
 ```
+
+**Output ที่คาดหวัง:**
+```
+distribution_centers: 10 curated rows, 0 quarantined
+products: 29,120 curated rows, 0 quarantined
+users: 100,000 curated rows, 0 quarantined
+orders: 125,226 curated rows, 0 quarantined
+order_items: 181,759 curated rows, 0 quarantined
+inventory_items: 490,705 curated rows, 0 quarantined
+events: 2,431,963 curated rows, 0 quarantined
+RESULT_PATH=outputs\curated\20261023T143022123456Z
+STATUS=PASS_WITH_KNOWN_ISSUES
+```
+
+**ตรวจสอบ validation ผ่าน:**
+```powershell
+Get-Content outputs\curated\20261023T143022123456Z\validation_report.json | ConvertFrom-Json | Select-Object batch_id, status, observed_at
+# ต้องได้ status = PASS_WITH_KNOWN_ISSUES และมี observed_at (ISO 8601 UTC)
+```
+
+> **Batch ID แบบ timestamp จำเป็น** เพื่อให้ `etl.load_batch` procedure ทำงานได้ถูกต้อง:
+> - `observed_at` เพิ่มขึ้นเรื่อยๆ (strictly increasing) ตามลำดับเวลาจริง
+> - NO_OP logic ทำงานได้ถูกต้อง (เทียบ `observed_at` + `package_hash`)
+> - Test framework อ่าน `observed_at` จาก `validation_report.json` ได้โดยตรง
 
 จากนั้นเปิด notebook:
 
@@ -130,57 +152,160 @@ Pipeline สร้าง batch ใหม่ใต้ `outputs/curated/` ตร�
 
 ## SQL และ AWS
 
-อ่าน [คู่มือ SQL](code/sql/README.md) ก่อนใช้งาน สร้าง SQL จากต้นฉบับด้วย:
+อ่าน [คู่มือ SQL](code/sql/README.md) ก่อนใช้งาน
 
-**วิธีที่ 1 (Activate แล้ว):**
+### 1. สร้าง SQL (หลัง Curated Pipeline เสร็จ)
 ```powershell
+# วิธีที่ 1 (Activate แล้ว)
 python code/build_warehouse_sql.py
-Copy-Item code/aws_batch_config.example.json code/aws_batch_config.json
-```
 
-**วิธีที่ 2 (Full path):**
-```powershell
+# วิธีที่ 2 (Full path)
 .\.venv\Scripts\python.exe code/build_warehouse_sql.py
-Copy-Item code/aws_batch_config.example.json code/aws_batch_config.json
+```
+> สร้าง `01_staging.sql`, `02_warehouse.sql`, `03_load_batch.sql` ใหม่ (รวม quick fixes)
+
+### 2. สร้าง Bucket S3 (Same Region as Redshift)
+```powershell
+# ดู region ของ Redshift / Learner Lab
+aws configure get region
+
+# สร้าง bucket (ชื่อต้อง unique ทั้ง AWS, ต้องอยู่ region เดียวกับ Redshift)
+aws s3api create-bucket --bucket my-unique-bucket-name-12345 --region us-east-1
+```
+> ⚠️ Bucket ต้องอยู่ region เดียวกับ Redshift (COPY ใน `03_load_batch.sql` ไม่มี REGION parameter)
+
+### 3. ดึง LabRole ARN
+```powershell
+aws iam get-role --role-name LabRole --query 'Role.Arn' --output text
+# Output: arn:aws:iam::111122223333:role/LabRole
 ```
 
-ใส่ bucket, IAM role ARN, curated_dir และ observed_at ของ batch ที่ตรวจผ่านใน config จริง ก่อนใช้ `code/prepare_aws_batch.py` ห้าม commit credentials หรือ config ของบัญชีจริง ตัวอย่าง config อ้าง batch ในเครื่องผู้พัฒนาเดิม ต้องปรับตาม batch ของตนเอง
+### 4. ตั้งค่า AWS Credentials (Learner Lab)
+```powershell
+# ใช้ค่าจาก "AWS Details" ของ Learner Lab
+aws configure set aws_access_key_id YOUR_ACCESS_KEY
+aws configure set aws_secret_access_key YOUR_SECRET_KEY
+aws configure set aws_session_token YOUR_SESSION_TOKEN  # สำคัญ! เปลี่ยนทุกครั้งที่เริ่ม session
+aws configure set region us-east-1  # หรือ region ที่ได้จากข้อ 2
+```
+> CloudShell ไม่ต้องตั้งค่า — ใช้ได้เลย
+
+### 5. เช็คสิทธิ์ก่อนต่อ
+```powershell
+aws sts get-caller-identity
+aws s3 ls s3://my-unique-bucket-name-12345
+```
+
+### 6. Copy Config Template และแก้ค่าจริง
+```powershell
+cp code/aws_batch_config.example.json code/aws_batch_config.json
+code code/aws_batch_config.json
+```
+
+**แก้ด้วยค่าจริง (5 field):**
+```json
+{
+  "curated_dir": "outputs/curated/v1-baseline",
+  "bucket": "my-unique-bucket-name-12345",
+  "prefix": "thelook/curated",
+  "iam_role": "arn:aws:iam::111122223333:role/LabRole",
+  "observed_at": "2026-10-22T18:21:40.634926+00:00"
+}
+```
+
+**Key Points:**
+- `curated_dir` = batch ที่เพิ่งสร้าง (จาก `RESULT_PATH` รองรับทั้ง custom และ timestamp format)
+- `observed_at` = **copy จาก validation_report.json** (field `observed_at`) **ห้ามแต่งเอง**
+- `bucket` = bucket ที่สร้างเอง (unique, same region as Redshift)
+- `iam_role` = LabRole ARN จริงจาก `aws iam get-role`
+- `prefix` = ตามโครงสร้าง S3 ในเอกสาร (`curated/<batch_id>/<table>/*.parquet`)
+
+> **Batch ID แบบ timestamp จำเป็น** สำหรับ AWS deployment และ NO_OP logic
+
+### 7. Verify ก่อน Generate Package
+```powershell
+# 1. validation_report.json สถานะ PASS_WITH_KNOWN_ISSUES
+Get-Content outputs\curated\20261023T143022123456Z\validation_report.json | ConvertFrom-Json | Select-Object batch_id, status, observed_at
+
+# 2. AWS credentials ทำงาน
+aws sts get-caller-identity
+aws s3 ls s3://my-unique-bucket-name-12345
+```
+
+### 8. Generate Package และ Upload S3
+```powershell
+python code/prepare_aws_batch.py --config code/aws_batch_config.json --output outputs/aws/20261023T143022123456Z
+cd outputs/aws/20261023T143022123456Z
+.\upload.ps1
+```
+
+### 9. ติดตั้ง SQL ใน Redshift (เรียงลำดับสำคัญ)
+```powershell
+psql -h <endpoint> -U <user> -d <db> -f code/sql/00_control.sql
+psql -h <endpoint> -U <user> -d <db> -f code/sql/01_staging.sql
+psql -h <endpoint> -U <user> -d <db> -f code/sql/02_warehouse.sql
+psql -h <endpoint> -U <user> -d <db> -f code/sql/03_load_batch.sql
+```
+
+### 10. รัน Batch Load (Autocommit ON, Single Session)
+```powershell
+psql -h <endpoint> -U <user> -d <db> -f outputs/aws/20261023T143022123456Z/run_batch.sql
+```
+
+### 11. Verify ผลลัพธ์
+```powershell
+psql -h <endpoint> -U <user> -d <db> -f code/sql/04_post_load_checks.sql
+```
 
 ## การทดสอบ
 
-**วิธีที่ 1 (Activate แล้ว):**
+### Local Unit Tests (ไม่ต้องมี dataset จริง)
 ```powershell
+# วิธีที่ 1 (Activate แล้ว)
 python -m unittest discover -s code -p test_curated_pipeline.py -v
-python -m unittest discover -s code -p test_warehouse_sql.py -v
+
+# วิธีที่ 2 (Full path)
+.\.venv\Scripts\python.exe -m unittest discover -s code -p test_curated_pipeline.py -v
 ```
 
-**วิธีที่ 2 (Full path):**
+### Contract Tests (ต้องมี accepted batch + validation report)
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s code -p test_curated_pipeline.py -v
+# ตั้ง batch ที่จะทดสอบ (ใช้ batch timestamp format จากการรัน pipeline)
+$env:CURATED_TEST_BATCH = 'outputs/curated/20261023T143022123456Z'
+
+# วิธีที่ 1 (Activate แล้ว)
+python -m unittest discover -s code -p test_warehouse_sql.py -v
+
+# วิธีที่ 2 (Full path)
 .\.venv\Scripts\python.exe -m unittest discover -s code -p test_warehouse_sql.py -v
 ```
 
-- `python -m unittest discover -s code -p test_curated_pipeline.py -v`: unit tests ของการแปลงข้อมูล ไม่ต้องใช้ dataset จริง
-- `python -m unittest discover -s code -p test_warehouse_sql.py -v`: contract tests ในเครื่อง เลือก accepted batch ด้วย `CURATED_TEST_BATCH` (path จาก project root หรือ absolute path) ค่าเริ่มต้นคือ `outputs/curated/20261018T121017059766Z` ต้องมี Parquet และ validation report ของ batch ที่เลือก ส่วนรายงาน FAIL สร้างเป็น fixture ชั่วคราว ไม่ต้องมี failed batch เก่า
+**รายละเอียด:**
+- `test_curated_pipeline.py`: unit tests การแปลงข้อมูล — ไม่ต้องใช้ dataset จริง
+- `test_warehouse_sql.py`: contract tests — ต้องมี accepted batch + validation report
+  - เลือก batch ด้วย `$env:CURATED_TEST_BATCH` (path จาก project root หรือ absolute path)
+  - Batch ต้องมี Parquet และ validation report สถานะ `PASS_WITH_KNOWN_ISSUES`
+  - `observed_at` อ่านจาก `validation_report.json` (field `observed_at`) — pipeline บันทึกอัตโนมัติ
+  - รายงาน FAIL สร้างเป็น fixture ชั่วคราว ไม่ต้องมี failed batch เก่า
 - ผลใน [รายงาน local validation](docs/report/warehouse_sql_local_validation.md) เป็นผลของ batch เดิม ไม่ใช่ผลรันหลัง clone และไม่ใช่ Redshift integration test
 
 ## ก่อนนำขึ้น Git
 
-เลือก batch สำหรับ warehouse tests จากจุดเดียวใน PowerShell โดยไม่ต้องแก้ example AWS config:
+เลือก batch สำหรับ warehouse tests จากจุดเดียวใน PowerShell โดยไม่ต้องแก้ example AWS config (ใช้ batch timestamp format):
 
 **วิธีที่ 1 (Activate แล้ว):**
 ```powershell
-$env:CURATED_TEST_BATCH = 'outputs/curated/20261018T121017059766Z'
+$env:CURATED_TEST_BATCH = 'outputs/curated/20261023T143022123456Z'
 python -m unittest discover -s code -p test_warehouse_sql.py -v
 ```
 
 **วิธีที่ 2 (Full path):**
 ```powershell
-$env:CURATED_TEST_BATCH = 'outputs/curated/20261018T121017059766Z'
+$env:CURATED_TEST_BATCH = 'outputs/curated/20261023T143022123456Z'
 .\.venv\Scripts\python.exe -m unittest discover -s code -p test_warehouse_sql.py -v
 ```
 
-ทุก test ใช้ batch นี้ร่วมกัน รวมถึง config สำหรับ package; `observed_at` คำนวณจาก batch ID ใน validation report ตามรูปแบบ timestamp ของ pipeline ไม่ใช่เวลาที่รัน tests ตัวแปรนี้มีผลเฉพาะ tests และอยู่ใน PowerShell session ปัจจุบัน
+ทุก test ใช้ batch นี้ร่วมกัน รวมถึง config สำหรับ package; `observed_at` อ่านจาก `validation_report.json` (field `observed_at`) — pipeline บันทึกอัตโนมัติ ตัวแปรนี้มีผลเฉพาะ tests และอยู่ใน PowerShell session ปัจจุบัน
 
 `.gitignore` แยก CSV, Parquet, outputs, runtime, local config, infrastructure handoff และเอกสาร binary ออก; Git จะเก็บ source, SQL, notebook, schema, baseline และ Markdown เป็นหลัก `.gitattributes` กำหนด line endings เพื่อใช้ข้ามเครื่อง
 

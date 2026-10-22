@@ -24,7 +24,21 @@ class WarehouseContracts(unittest.TestCase):
         if not report_path.is_file():
             raise FileNotFoundError(f'Batch report not found: {report_path}. Set CURATED_TEST_BATCH to a curated batch directory.')
         cls.report = json.loads(report_path.read_text(encoding='utf-8'))
-        cls.observed_at = datetime.strptime(cls.report['batch_id'], '%Y%m%dT%H%M%S%fZ').replace(tzinfo=timezone.utc).isoformat()
+        # Use observed_at from report if available (added by curated_pipeline.py), otherwise try to parse from batch_id
+        observed_at = cls.report.get('observed_at')
+        if observed_at:
+            cls.observed_at = observed_at
+        else:
+            # Fallback: try to parse from batch_id (timestamp format YYYYMMDDTHHMMSSffffffZ)
+            try:
+                cls.observed_at = datetime.strptime(cls.report['batch_id'], '%Y%m%dT%H%M%S%fZ').replace(tzinfo=timezone.utc).isoformat()
+            except ValueError:
+                raise ValueError(
+                    f"Batch '{cls.report['batch_id']}' has no 'observed_at' in validation_report.json "
+                    f"and batch_id is not a parsable timestamp. "
+                    f"Ensure curated_pipeline.py adds 'observed_at' to validation_report.json, "
+                    f"or provide observed_at in aws_batch_config.json."
+                )
 
     def batch_config(self):
         cfg = json.loads((ROOT/'code/aws_batch_config.example.json').read_text())
