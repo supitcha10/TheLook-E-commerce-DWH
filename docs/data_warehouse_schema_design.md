@@ -2,7 +2,7 @@
 
 ปรับปรุง: 18 ตุลาคม 2026  
 เป้าหมาย: Amazon Redshift — **1 fact (`fact_sales`) และ 4 dimensions**  
-สถานะ: ข้อกำหนดสำหรับ implementation พร้อม DDL ฉบับปรับปรุง ยังไม่ได้รันใน AWS
+สถานะ24ต.ค.2026: schema/loader/SCD/reportingผ่านAWSตามผลผู้ใช้ ดู [DW handoff](dw_handoff.md); เนื้อหาออกแบบด้านล่างเป็นdw-v1
 
 ใช้ curated-v1 และกฎ provisional-v1 ที่มีอยู่ ไม่เปลี่ยน Parquet เดิม ข้อกำหนดการจัดเก็บในเอกสารนี้เป็นการตัดสินใจของโครงการ ส่วนความหมาย city/null และสาเหตุวันที่ item ผิดลำดับยังรอยืนยันต้นทาง
 

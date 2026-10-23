@@ -81,10 +81,9 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
     -- In default mode Redshift rolls back the failed transaction, logs in a new
     -- transaction, commits the handler, then automatically rethrows the error.
-    -- Explicit RAISE ensures re-throw even if behavior changes.
+    -- Do not use bare RAISE here: default atomic mode rethrows automatically.
     INSERT INTO etl.batch_attempts(batch_id, attempted_at, status, detail)
     VALUES (p_batch_id, GETDATE(), 'FAILED', LEFT(SQLERRM, 4000));
-    RAISE;
 END;
 $$ LANGUAGE plpgsql;
 """

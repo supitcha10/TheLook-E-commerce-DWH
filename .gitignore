@@ -22,7 +22,15 @@ __pycache__/
 /code/aws_batch_config.local*.json
 *.pem
 *.key
-/docs/handoff1.md
+# The reviewed handoff and Markdown evidence are part of the deliverable.
+# Keep unreviewed private attachments/configuration outside Git.
+/docs/private/
+*.p12
+*.pfx
+*.tfstate
+*.tfstate.*
+credentials.json
+secrets.json
 
 # Local editor/OS files
 .vscode/
@@ -31,6 +39,8 @@ __pycache__/
 Thumbs.db
 Desktop.ini
 *.log
+*.zip
+*.jsonl
 
 # Binary reports/screenshots: retain Markdown reports in the repository.
 /docs/report/*.png

@@ -1,5 +1,7 @@
 # โฟลการทำงานของทีม Data Warehouse
 
+> สถานะปัจจุบัน24ต.ค.2026 ดู [DW handoff](dw_handoff.md) และ checklist ล่าสุด เนื้อหาที่ระบุว่ายังไม่deploy/ทดสอบด้านล่างเป็นบันทึกหรือแผนเดิม ไม่ใช่สถานะปัจจุบัน ห้ามรันขั้นติดตั้งซ้ำบนฐานที่มีข้อมูล
+
 > สถานะการลงมือทำและ checklist ล่าสุดอยู่ที่ [WORK_PROGRESS.md](../WORK_PROGRESS.md) ส่วนไฟล์นี้อธิบาย workflow โดยรวม คู่มือ SQL อยู่ที่ [sql/README.md](../code/sql/README.md)
 
 โครงการ TheLook E-Commerce  

@@ -1,6 +1,6 @@
 # วิธีติดตั้งและโหลดข้อมูลเข้า Redshift
 
-สถานะ 2026-10-18: เขียน SQL และทดสอบ contract กับ Parquet ในเครื่องแล้ว **ยังไม่ได้ติดตั้งหรือ execute บน Redshift** ดูสถานะล่าสุดที่ [WORK_PROGRESS.md](../../WORK_PROGRESS.md)
+สถานะ24ต.ค.2026: ติดตั้งและทดสอบAWSแล้ว รวมSCD/rollback/retry/reporting ดู [DW handoff](../../docs/dw_handoff.md). คู่มือด้านล่างเป็นขั้นติดตั้งครั้งแรก ไม่รันซ้ำกับฐานที่มีข้อมูล. Reporting SQL10/11ติดตั้งและตรวจแล้ว.
 
 ## ไฟล์และหน้าที่
 
