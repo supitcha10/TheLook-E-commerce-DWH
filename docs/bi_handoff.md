@@ -2,6 +2,23 @@
 
 User decision: แยกยอดตามสถานะ ยังไม่เรียก net sales. Updated 24 October 2026: views installed and all8 AWS checks PASS; user confirmed totals. See [acceptance evidence](report/reporting_acceptance_20261024.md). BI dashboard/connectivity remains pending.
 
+## สำหรับผู้รับงาน
+
+เอกสารและ reporting views ฝั่ง DW พร้อมส่งต่อ แต่ยังไม่มีหลักฐานว่า BI รับมอบ เลือกเครื่องมือ เชื่อมต่อ หรือยืนยัน known issues แล้ว ไม่ต้องรอ BI เพื่อเตรียมเอกสารส่วนนี้ให้พร้อม
+
+1. อ่าน [ข้อมูลต้นทางและ known issues](source_dataset_acceptance.md): ผู้ใช้เลือก Kaggle Version 1 ดาวน์โหลด 6 ตุลาคม 2026 เป็นข้อมูลคงที่; new-snapshot pipeline/schedule อยู่นอกขอบเขต เวลา snapshot และความครบถ้วนทุกแถวจาก BigQuery ยังไม่ทราบ
+2. อ่าน Connection, Views และ Metric dictionary ด้านล่าง ใช้ฐาน `thelook_glue_validation` / schema `reporting` ไม่ใช้ `dev` หรือฐาน synthetic `thelook_scd_test`
+3. อ่าน [ผลตรวจ reporting](report/reporting_acceptance_20261024.md) และ [DW handoff](dw_handoff.md) สำหรับทรัพยากรและรายการหลักฐาน ห้ามติดตั้ง DDL หรือโหลดข้อมูลซ้ำเพียงเพื่อรับช่วงงาน
+4. ให้ BI/Infra ยืนยันเครื่องมือและสิทธิ์บริการ, read-only principal, network/endpoint ที่จะใช้จริง และข้อกำหนด RLS ก่อนเชื่อมต่อ ไม่ถือว่า Glue connection เดิมเป็นเส้นทางที่เครื่องมือ BI ใช้ได้แล้ว
+5. หลังเชื่อมได้ ให้ BI ร่วม DW ตรวจ Dashboard ด้วยตัวกรองเดียวกัน: items **181759**, distinct orders **125226**, sale amount ทุกสถานะ **10827118.925100** ตรวจยอดแต่ละสถานะกับรายงานอ้างอิง และคำนวณ DISTINCT ใหม่สำหรับยอดรวม
+
+รายการที่ผู้รับต้องยืนยันภายหลัง:
+
+- [ ] DW/BI รับทราบ known issues พร้อมชื่อและวันที่ตามเอกสารต้นทาง; ไม่เปลี่ยน provisional-v1 เป็น source-confirmed
+- [ ] Infra/BI ทดสอบการเชื่อมต่อด้วยสิทธิ์อ่าน และทดสอบสิทธิ์ตามบทบาทที่ตกลง
+- [ ] BI/DW ตรวจยอด ตัวกรอง grain และป้ายกำกับ (Unknown, UTC, สถานะ, currency ที่ยังไม่ยืนยัน และข้อจำกัด snapshot)
+- [ ] บันทึกผู้รับ วันที่ และหลักฐานการรับมอบจริง
+
 ## Connection and scope
 
 - Region us-east-1, cluster thelook-redshift-cluster-1, database thelook_glue_validation, schema reporting.
@@ -51,3 +68,9 @@ Inventory balance/stock aging and events funnel are NOT delivered by fact_sales.
 ## Remaining approvals/information
 
 Business/source owner: snapshot time/timezone, currency, revenue/returns recognition rules if net metrics are later needed. BI/Infra: actual read-only principal, QuickSight availability, network path and row-level access requirements. Current status-separated views can be reviewed without inventing these answers.
+
+## หลักฐานที่เตรียมให้ผู้รับแล้ว
+
+ชุดในเครื่อง `outputs/DW-handoff-evidence/` มีภาพ reporting.v_sales_item ที่ item_rows=unique_items181759,distinctorders125226,sale10827118.925100,cost5208355.223564 และยอด5สถานะตรงรายงานเดิม พร้อมภาพ ledger/checks และไฟล์ replay ที่ผ่าน ไม่ใช่หลักฐานว่า BI เชื่อมต่อหรือยอมรับ Dashboard แล้ว
+
+รายงานเดิมระบุ reporting checks8 PASS แต่ภาพ/exportsต้นฉบับครบ8รายการยังไม่ได้รวบรวมในชุด; ภาพ totals/grain/status ที่ได้เพิ่มไม่ใช้รับรอง rollups/references/lineage ทุกข้อแทน การรับทราบ known issues และการรับมอบของทีมยังรอยืนยัน

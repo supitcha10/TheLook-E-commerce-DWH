@@ -2,7 +2,7 @@
 
 CSV7ตาราง → AWS Glue → curated Parquet → Redshift staging → star schema → reporting views สำหรับวิเคราะห์ยอดตามสถานะ
 
-**สถานะ24ต.ค.2026:** initial snapshot, ETL/Catalog/COPY/SCD2/rollback/retry, DataAPI replay และreporting validationผ่านบนAWSตามหลักฐานผู้ใช้ ยังไม่deploy new-snapshot orchestration/schedule/BI dashboard
+**สถานะ24ต.ค.2026:** initial snapshot, ETL/Catalog/COPY/SCD2/rollback/retry, DataAPI replay และreporting validationผ่านบนAWSตามหลักฐานผู้ใช้ ใช้ Kaggle Version 1 เป็นข้อมูลคงที่สำหรับส่งงาน; new-snapshot orchestration/schedule อยู่นอกขอบเขตและไม่ได้ deploy ส่วน BI connectivity/dashboard และการรับมอบยังรอผู้รับดำเนินการ
 
 ## เริ่มอ่าน
 
@@ -10,6 +10,7 @@ CSV7ตาราง → AWS Glue → curated Parquet → Redshift staging → st
 2. [handoff1 checklist](docs/handoff1.md) — DW/Infra/BIทำอะไรแล้ว ใครปิดงานที่เหลือ
 3. [BI handoff](docs/bi_handoff.md) — views/metrics; แยกสถานะ ยังไม่เรียกnet sales
 4. [สถานะงาน](WORK_PROGRESS.md), [reporting acceptance](docs/report/reporting_acceptance_20261024.md)
+5. [ข้อมูลต้นทางและ known issues](docs/source_dataset_acceptance.md) — ข้อตกลง Version 1, หลักฐาน S3 และข้อจำกัดที่ต้องรับทราบ
 
 ## โครงสร้าง
 
@@ -52,3 +53,9 @@ Buildersบางตัวอ้างexisting evidence/install artifactsใต�
 Account/resource IDsที่จำเป็นยังอยู่ในcode/docsเป็นconfiguration references ไม่ใช่credentials เหมาะกับrepositoryทีมที่ตกลงสิทธิ์เข้าถึง หากจะเปิดpublicต้องreview/redactตามนโยบายทีมก่อน ไม่มีการcommit/pushอัตโนมัติจากการจัดเอกสาร
 
 คู่มือเดิมที่ถูกแทนที่อยู่ [archive](docs/archive/readme_legacy.md); ห้ามใช้ข้อความเดิมที่อนุมานobservation timeจากbatch timestampเป็นข้อกำหนดปัจจุบัน
+
+## ความพร้อมส่งต่องาน DW
+
+DW สำหรับ Kaggle Version 1 แบบคงที่พร้อมส่งต่อแล้ว ตาม [สถานะงาน](WORK_PROGRESS.md) และ [DW handoff](docs/dw_handoff.md) ชุดหลักฐานในเครื่องอยู่ `outputs/DW-handoff-evidence/README.md` พร้อม inventory/SHA-256 และไม่เข้า Git ต้องส่งแยกจาก repository
+
+รวมหลักฐาน Glue/READY/validation, Redshift/reporting/SCD audit และ replay รอบผ่านแล้ว ยังระบุส่วนที่ไม่มีต้นฉบับ (rollback before/after, atomic patch verification และ reporting checks8รายการครบชุด) อย่างชัดเจน การรับมอบจริง/known-issue acceptance/สิทธิ์เชื่อมต่อและDashboardของBIยังค้างตามเจ้าของงาน ไม่ต้องรัน pipeline ซ้ำเพื่อส่งต่อ

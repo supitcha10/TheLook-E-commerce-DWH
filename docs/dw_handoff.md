@@ -6,6 +6,8 @@
 
 Initial snapshot ของ TheLook: CSV7ตาราง → Glue cleaning/validation → Parquet → Redshift staging → 4dimensions + fact_sales → reporting8views พร้อม audit, retry/NO_OP และชุดทดสอบ SCD2/rollback
 
+ผู้ใช้ตกลงใช้ Kaggle Version 1 ดาวน์โหลด 6 ตุลาคม 2026 เป็นข้อมูลคงที่สำหรับส่งงาน ตาม [หลักฐานต้นทางและ known issues](source_dataset_acceptance.md) จึงไม่รวม new-snapshot orchestration/schedule ในขอบเขตครั้งนี้ เวลา export/source snapshot และความครบถ้วนทุกแถวจาก BigQuery ยังไม่ทราบ การเลือกข้อมูลคงที่ไม่ใช่การยืนยัน known issues ของ DW/BI หรือการยืนยันสาเหตุจากต้นทาง
+
 ตัวรัน CloudShell รวม S3 validation กับ Data API replay ได้แล้ว แต่ล็อกเฉพาะ batch ที่เผยแพร่สำเร็จ ไม่ใช่ pipeline รับ snapshot ใหม่ ไม่ใช่ scheduler และไม่ใช่ dashboard ที่ deploy แล้ว
 
 ## เริ่มอ่านและใช้งาน
@@ -79,17 +81,33 @@ Package hash ของ batch จริง: d897e3ee9663b725c6a226b99712094cc5d53
 
 หลักฐาน raw exports/screenshots/Parquet/ZIP อยู่ outputs หรือที่ผู้ใช้เก็บ ไม่แนบ Git รายงานสรุปที่ review แล้วอยู่ [reporting acceptance](report/reporting_acceptance_20261024.md) การไม่พบไฟล์ outputs ใน clone ใหม่ไม่ได้หมายความว่าต้องรัน deployment ซ้ำ
 
+### รายการหลักฐานสำหรับส่งต่อ
+
+| กลุ่มหลักฐาน | รายงานสรุปที่อ่านใน repository ได้ | ไฟล์หลักฐานประกอบที่ผู้ดูแลต้องจัดส่ง/ระบุตำแหน่ง |
+|---|---|---|
+| ข้อมูลต้นทาง / S3 raw | [Source dataset acceptance](source_dataset_acceptance.md): 7 URI/ขนาด/เวลา/Versioning จากผลผู้ใช้ | ภาพ Kaggle/S3 และผล CloudShell ต้นฉบับ; ยังไม่รับรอง checksum S3 |
+| Glue / Catalog / COPY / warehouse | หัวข้อหลักฐานที่ผ่านในเอกสารนี้ และ [handoff checklist](handoff1.md) | Glue run IDs/logs, Catalog/schema exports, validation report/READY, manifest/controls และผล ledger/count/money checks ของ batch จริง |
+| SCD / rollback / retry / atomic patch | ตารางหลักฐานด้านบน และ [SCD runbook](scd_rollback_test_runbook.md) ซึ่งเป็นวิธีทดสอบ ไม่ใช่ผลทดสอบต้นฉบับ | ผล query/ภาพ before-after และ audit ของฐานทดสอบ รวมหลักฐาน patch ในฐาน validation |
+| Guarded replay | สรุป REPLAY_PASSED ด้านบน | bundle ที่ใช้จริง, run UUID, result.json/statements.jsonl และผล before-after ของรอบที่ผ่าน |
+| Reporting | [Reporting acceptance](report/reporting_acceptance_20261024.md): 8 checks และยอดแยกสถานะของ batch จริง | ภาพหรือ query exports ต้นฉบับที่ผู้ใช้เก็บ และ package ที่ใช้ติดตั้งหากจำเป็นสำหรับรับช่วง |
+
+สถานะตารางนี้คือมีรายงานสรุปตามหลักฐานที่ผู้ใช้เคยส่ง แต่ยังไม่ได้ยืนยันการรวบรวม/จัดส่งไฟล์ต้นฉบับให้ผู้รับครบ การมีโฟลเดอร์ outputs ไม่เท่ากับตรวจว่าหลักฐานทุกชิ้นอยู่ครบ ให้ผู้ดูแลบันทึกตำแหน่งและผู้รับจริง โดยส่งข้อมูลจริง/outputs ผ่านช่องทางทีมแยกจาก Git และไม่แนบ credentials
+
+รายงาน [curated local validation](report/curated_validation.md) และ [warehouse SQL local validation](report/warehouse_sql_local_validation.md) เป็นผล local batch `20261018T070120429459Z` ไม่ใช่หลักฐานของ AWS batch `20261023T151247118967Z_f8a02155` และไม่ใช้แทนผล AWS รอบจริง
+
 ## ส่งต่อและเจ้าของงานค้าง
 
 | งาน | ผู้รับผิดชอบร่วม | เกณฑ์ปิด |
 |---|---|---|
-| Snapshot time/version/completeness | Source owner + DW | source_observed_at พร้อม timezone/evidence และ full-snapshot contract |
-| Known issues | Source owner + DW | ยืนยัน city token และ item timestamp semantics; ไม่เปลี่ยน baselineเพื่อให้ผ่าน |
+| Source metadata limitations | DW บันทึก; source owner ให้ข้อมูลหากมี | Version 1/ข้อมูลคงที่ตกลงแล้ว; เวลา snapshot และความครบถ้วนจาก BigQuery ยังไม่ทราบ ระบุเป็นข้อจำกัด ไม่สร้างเวลาแทน |
+| Known issues acceptance | DW + BI | มีชื่อ/วันที่รับทราบ provisional-v1; ส่วนสาเหตุ city token/item timestamps ยังไม่ยืนยันโดยต้นทาง ไม่เปลี่ยน baselineเพื่อให้ผ่าน |
 | Lifecycle/retention/encryption/policies | Infra + DW | ระบุ retentionแต่ละprefix/logs, owner, หลักฐานค่าจริงและสิทธิ์ที่จำเป็น |
 | Read-only/RLS/BI connectivity | Infra + BI | ยืนยัน principal/สิทธิ์/เส้นทาง; ไม่ใช้ admin credentials เป็นการส่งมอบ |
 | Dashboard acceptance | BI + DW | ยอด/filtersตรงviews, distinctordersไม่บวกข้ามกลุ่ม, labelsตรงmetricdictionary |
-| New-snapshot orchestration/schedule | DW + Infra | metadataพร้อม, negative testsผ่าน, monitoringปลายทางตกลงแล้ว จึง deploy |
+| New-snapshot orchestration/schedule | นอกขอบเขตครั้งนี้ | ไม่ได้ deploy; หากเปลี่ยนเป็นรับข้อมูลใหม่ ต้องมี source contract/negative tests/monitoring ก่อน |
 | Budget/stop policy | Infra + ผู้ดูแลLab | ยอดจริง, ผู้รับผิดชอบและเวลาเปิด/พัก/เก็บ/ลบ |
+| Monitoring/failure alerts | Infra + DW | ตกลงผู้ดูแล/ปลายทางและเก็บหลักฐานทดสอบ ไม่ถือว่า logs อย่างเดียวเป็น alert ที่ทดสอบแล้ว |
+| ส่งมอบและรับมอบจริง | DW → Infra/BI | เอกสารพร้อมส่ง; รอการส่งจริง ชื่อผู้รับ วันที่ และผลรับมอบตามเอกสารต้นทาง |
 
 ยังไม่รับรอง concurrency/cancellation/late-arriving acceptance; inventory stock metrics และ web funnel ต้องนิยามเพิ่ม ไม่ได้เสร็จจาก fact_sales
 
@@ -103,3 +121,15 @@ Package hash ของ batch จริง: d897e3ee9663b725c6a226b99712094cc5d53
 - เก็บผลและไม่มีqueryค้างก่อนpause;สถานะclusterปัจจุบันต้องตรวจConsole เอกสารนี้ไม่อ้างว่าพักอยู่ตอนอ่าน
 - observed_at anchor ของ bootstrap ไม่ใช่source-confirmed; processed_at/published_atไม่ใช้แทนเวลาsnapshot
 - ไม่สร้าง NAT/CMK/custom roles เพิ่มเพื่อให้ครบchecklistโดยไม่มีความจำเป็น/สิทธิ์ที่ยืนยัน
+
+## สถานะการรวบรวมหลักฐานล่าสุดสำหรับส่งต่อ
+
+DW สำหรับ Version 1 แบบคงที่พร้อมส่งต่อ; การรับมอบและ known-issue acceptance ยังรอผู้รับยืนยัน รายการไฟล์จริงและข้อจำกัดอยู่ `outputs/DW-handoff-evidence/evidence_inventory.csv` และ README ของชุดหลักฐานในเครื่อง (ไม่แนบ Git)
+
+- ได้รับ validation report66 PASS/quarantine0 และ READY ของ batch `20261023T151247118967Z_f8a02155`; ภาพ CloudWatch START/PASSED/OUTPUT ผูกกับ Run ID `jr_766afe9dd1daefe7e2c8bae1d39d8f9389167dfa338486247c28d65c853e9b4e`
+- ได้รับภาพ current database/ledger SUCCEEDED และ checks7รายการ (PASS4/KNOWN_ISSUE3); staging/warehouse/reporting มี181759items,125226distinctorders,sale10827118.925100,cost5208355.223564; ยอด5สถานะตรงรายงานเดิม
+- ได้รับภาพ SCD audit9attempts/4published batches/7user versions/4current users และ current-version violation0แถว เป็นสภาพปัจจุบัน ไม่ใช่ before/after ของ rollback
+- ได้รับ replay result.json/statements.jsonl ของ run `ae45e3c1-e6e0-4d29-b70f-e63d3da1ea43`: REPLAY_PASSED,16statements FINISHED, comparison8ตาราง PASS,new_no_op_attempt PASS; package hashตรงที่ระบุในเอกสารนี้
+- ยังขาดไฟล์ต้นฉบับ rollback before/after, atomic handler patch verification และภาพ/exports reporting checks8รายการรอบเดิม; Catalog schema/locationเต็มและCSV detailบางส่วนยังไม่มี รายงานสรุปเดิมไม่ใช่หลักฐานต้นฉบับที่รวบรวมครบแล้ว
+
+ตารางรายการหลักฐานก่อนหน้าคือรายการที่ต้องส่ง ส่วนหัวข้อนี้ระบุสิ่งที่รวบรวมได้ล่าสุด ยังไม่มีการส่งภายนอกหรือรับมอบจริง และไม่ได้ตรวจ AWS สดโดยผู้จัดเอกสาร

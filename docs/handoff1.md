@@ -11,8 +11,9 @@
 - [x] ตกลงgrain fact_salesหนึ่งแถวต่อorder item; 4dimensions, Type2 users/Type1 productsและDC
 - [x] counts/money reconciliation, SCD2/rollback/retry/NO_OP ผ่านบน AWS
 - [x] Reporting8viewsและ8checksผ่าน; ผู้ใช้เลือกแยกยอดตามสถานะ ยังไม่ใช่net sales
-- [ ] ยืนยันเวอร์ชันต้นทาง/source_observed_at/timezone/full-snapshotและความถี่โหลด
-- [ ] ยืนยันknown issuesกับต้นทาง; ปัจจุบันprovisional-v1
+- [x] ผู้ใช้ตกลงใช้ Kaggle Version 1 ดาวน์โหลด 6 ตุลาคม 2026 เป็นข้อมูลคงที่; S3 URI/ขนาดตรงไฟล์ในเครื่องครบ 7 CSV ตาม [หลักฐานต้นทาง](source_dataset_acceptance.md) ยังไม่ตรวจ checksum เทียบ S3
+- ข้อจำกัด: ต้นทางไม่ระบุเวลา export/source_observed_at/timezone และยังไม่ยืนยันความครบถ้วนทุกแถวจาก BigQuery; ไม่อนุมานจากวันดาวน์โหลดหรือ S3
+- [ ] DW/BI ยืนยันรับทราบ known issues ตาม provisional-v1 พร้อมชื่อ/วันที่ในเอกสารต้นทาง; ยังไม่มีคำยืนยันสาเหตุจากต้นทาง และข้อตกลงข้อมูลคงที่ไม่ใช่การอนุมัติ known issues
 
 ## B. S3 / network — DW ร่วม Infra
 
@@ -39,7 +40,7 @@
 - [x] Raw/curatedCrawlerและCatalogครบ7ตาราง/schema/locationตรวจแล้ว
 - [x] ตั้งtemporary/logpaths, workers2/retry0/concurrency1/bookmarkoff
 - [x] CloudShell runnerตรวจS3→DataAPI replay→8ตารางไม่เปลี่ยนและNO_OPเพิ่ม1
-- [ ] Pipelineรับsnapshotใหม่/Glue orchestration/schedule: ไม่ได้deploy; ต้องรอsource contractและทดสอบเพิ่ม
+- นอกขอบเขตส่งงานข้อมูลคงที่: pipeline รับ snapshot ใหม่/Glue orchestration/schedule ไม่ได้ deploy หากเปลี่ยนขอบเขตต้องทำตาม source contract และทดสอบเพิ่ม ไม่ติ๊กเป็นงานเสร็จ
 
 Catalogเป็นmetadata branch; ETLอ่านS3โดยexplicit schema ยังไม่ใช่ETLที่ใช้Catalogเป็นinputบังคับ
 
@@ -64,10 +65,18 @@ Catalogเป็นmetadata branch; ETLอ่านS3โดยexplicit schema �
 - [x] รวมbucket/prefix, cluster/database, role, Glue settingsและnetworkที่ทราบใน [DW handoff](dw_handoff.md)
 - [x] รวมผลconnection/ETL/COPY/SCD/rollback/replay/reportingโดยไม่แนบsecret
 - [x] จัดทำ [BI metric dictionary](bi_handoff.md) และ [reporting acceptance](report/reporting_acceptance_20261024.md)
+- [x] จัดทำ [ข้อมูลต้นทางและ known issues](source_dataset_acceptance.md); ช่องยืนยันของ DW/BI และรับมอบยังรอหลักฐาน
 - [ ] เติมรายละเอียดretention/policy/encryption/endpointID/ค่าใช้จ่ายที่ยังไม่ยืนยัน
 - [ ] ส่งเอกสารให้ผู้รับและได้รับการรับมอบจริง (การเตรียมไฟล์ไม่เท่ากับส่งแล้ว)
 - [ ] BIเชื่อมข้อมูลและตรวจdashboard; QuickSightสิทธิ์ยังไม่ยืนยัน
 
 ## เกณฑ์ปิดงาน
 
-ส่วนinitial snapshot/warehouse/reportingผ่านแล้วตามหลักฐาน เป็นขอบเขตส่งมอบปัจจุบัน ส่วนcontinuous ingestion/schedule/dashboardยังเปิดงานไว้ตามเจ้าของด้านบน handoffเดิมไม่ได้บังคับสร้างNAT/CMK/schedulerทุกอย่าง ห้ามสร้างresourceเพิ่มเพียงเพื่อให้checkboxเต็ม
+ส่วนข้อมูลคงที่ Version 1/warehouse/reporting พร้อมส่งต่อตามหลักฐาน ไม่เท่ากับทีมยอมรับ known issues หรือรับมอบแล้ว ส่วน continuous ingestion/schedule อยู่นอกขอบเขตครั้งนี้ ไม่ได้ deploy งานร่วมที่ยังเปิดคือ Infra review retention/security/cost/monitoring, สิทธิ์ BI, Dashboard และการรับมอบจริง handoffเดิมไม่ได้บังคับสร้างNAT/CMK/schedulerทุกอย่าง ห้ามสร้างresourceเพิ่มเพียงเพื่อให้checkboxเต็ม
+
+## สถานะชุดหลักฐานที่รวบรวมแล้ว
+
+- [x] จัดชุด `outputs/DW-handoff-evidence/` พร้อม inventory และตรวจ SHA-256 สำเนาเทียบต้นฉบับในเครื่อง (ไม่ใช่ checksum เทียบ S3)
+- [x] รวม READY/report/Glue-CloudWatch linkage, Redshift/reporting totals, SCD audit และ replay result/statements รอบที่ผ่าน
+- หลักฐานที่ยังไม่มีต้นฉบับในชุด: rollback before/after, atomic patch verification และ reporting checks8รายการรอบเดิม; ไม่เปลี่ยนสถานะการทดสอบเดิมเป็นการทดสอบใหม่ และไม่ใช้ audit/totals แทนหลักฐานเหล่านี้
+- DW พร้อมส่งต่อภายใต้ขอบเขตข้อมูลคงที่; checklist เรื่อง known issues/Infra/BI/รับมอบที่ยังว่างข้างต้นยังคงรอหลักฐาน ไม่ต้องรัน Glue/loader/replay ซ้ำเพื่อรับช่วงงาน
