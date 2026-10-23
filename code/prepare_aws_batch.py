@@ -35,7 +35,8 @@ def prepare(config_path,output_path):
     if set(report['tables'])!=set(expected_tables): raise ValueError('Expected all seven curated tables.')
     if report['schema_version']!='curated-v1' or report['rule_version']!='provisional-v1':
         raise ValueError('Unsupported curated/rule version.')
-    batch=report['batch_id']
+    # A deployment may use a different S3 batch ID for the same validated files.
+    batch=cfg.get('batch_id',report['batch_id'])
     if not re.fullmatch(r'[A-Za-z0-9_-]{1,64}',batch): raise ValueError('Invalid batch ID')
     observed=cfg['observed_at']
     if datetime.fromisoformat(observed).tzinfo is None: raise ValueError('observed_at must include timezone.')
@@ -60,6 +61,8 @@ def prepare(config_path,output_path):
     package={'batch_id':batch,'observed_at':observed,'dw_schema':'dw-v1','curated_schema':'curated-v1',
              'rule_version':'provisional-v1','s3_root':s3root,'iam_role':role,
              'files':[{k:v for k,v in i.items() if k!='local_file'} for i in items], 'money':money}
+    if batch != report['batch_id']:
+        package['source_curated_batch_id']=report['batch_id']
     package_hash=hashlib.sha256(json.dumps(package,sort_keys=True,separators=(',',':')).encode()).hexdigest()
     package['package_hash']=package_hash
     out=Path(output_path).resolve()
