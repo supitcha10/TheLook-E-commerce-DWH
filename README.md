@@ -59,3 +59,7 @@ Account/resource IDsที่จำเป็นยังอยู่ในcode/d
 DW สำหรับ Kaggle Version 1 แบบคงที่พร้อมส่งต่อแล้ว ตาม [สถานะงาน](WORK_PROGRESS.md) และ [DW handoff](docs/dw_handoff.md) ชุดหลักฐานในเครื่องอยู่ `outputs/DW-handoff-evidence/README.md` พร้อม inventory/SHA-256 และไม่เข้า Git ต้องส่งแยกจาก repository
 
 รวมหลักฐาน Glue/READY/validation, Redshift/reporting/SCD audit และ replay รอบผ่านแล้ว ยังระบุส่วนที่ไม่มีต้นฉบับ (rollback before/after, atomic patch verification และ reporting checks8รายการครบชุด) อย่างชัดเจน การรับมอบจริง/known-issue acceptance/สิทธิ์เชื่อมต่อและDashboardของBIยังค้างตามเจ้าของงาน ไม่ต้องรัน pipeline ซ้ำเพื่อส่งต่อ
+
+## BI views ตามฝ่าย — 25 ตุลาคม 2026
+
+เพิ่ม [SQL12](code/sql/12_bi_role_views_final.sql): schema bi8views รวมbaseภายใน1, database users/groups5ฝ่ายและGRANT อ่าน [คู่มือBI views/metrics/สิทธิ์](docs/bi_role_views.md) ก่อนใช้ net_sales ซึ่งตัด Cancelled/Returned ตามนิยามBI ไม่เปลี่ยน reportingเดิมเป็นrecognized revenue หัวSQLระบุรันแล้วแต่ยังไม่มีผลตรวจSQL12ต้นฉบับแนบ ไม่ใช้แทนหลักฐานDashboard/RLS/การรับมอบ และไม่รันส่วนสร้างuserซ้ำ

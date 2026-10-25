@@ -1,13 +1,13 @@
-# BI handoff — status-separated reporting v1
+# BI handoff — reporting v1 และ BI views ตามฝ่าย
 
-User decision: แยกยอดตามสถานะ ยังไม่เรียก net sales. Updated 24 October 2026: views installed and all8 AWS checks PASS; user confirmed totals. See [acceptance evidence](report/reporting_acceptance_20261024.md). BI dashboard/connectivity remains pending.
+อัปเดต25ตุลาคม2026: reportingเดิม8views/8checksเป็นยอดแยกสถานะตาม [หลักฐานเดิม](report/reporting_acceptance_20261024.md) เพิ่ม SQL12 อีก8viewsในschema bi พร้อมนิยามnet_salesของBIและusers/groupsตามฝ่าย ตาม [คู่มือBI role views](bi_role_views.md) หัวSQLระบุรัน/ทดสอบแล้วแต่ยังไม่มีผลต้นฉบับSQL12แนบ จึงแยกสถานะนี้ออกจากAWS evidenceที่ตรวจรับเดิม Dashboard/connectivity/รับมอบยังรอ
 
 ## สำหรับผู้รับงาน
 
 เอกสารและ reporting views ฝั่ง DW พร้อมส่งต่อ แต่ยังไม่มีหลักฐานว่า BI รับมอบ เลือกเครื่องมือ เชื่อมต่อ หรือยืนยัน known issues แล้ว ไม่ต้องรอ BI เพื่อเตรียมเอกสารส่วนนี้ให้พร้อม
 
 1. อ่าน [ข้อมูลต้นทางและ known issues](source_dataset_acceptance.md): ผู้ใช้เลือก Kaggle Version 1 ดาวน์โหลด 6 ตุลาคม 2026 เป็นข้อมูลคงที่; new-snapshot pipeline/schedule อยู่นอกขอบเขต เวลา snapshot และความครบถ้วนทุกแถวจาก BigQuery ยังไม่ทราบ
-2. อ่าน Connection, Views และ Metric dictionary ด้านล่าง ใช้ฐาน `thelook_glue_validation` / schema `reporting` ไม่ใช้ `dev` หรือฐาน synthetic `thelook_scd_test`
+2. อ่าน Connection, Views และ Metric dictionary ด้านล่าง ใช้ฐาน `thelook_glue_validation` / schema `reporting` สำหรับอ้างอิง และ schema `bi` สำหรับ viewsตามฝ่ายในSQL12ตามสิทธิ์ที่ยืนยัน ไม่ใช้ `dev` หรือฐาน synthetic `thelook_scd_test`
 3. อ่าน [ผลตรวจ reporting](report/reporting_acceptance_20261024.md) และ [DW handoff](dw_handoff.md) สำหรับทรัพยากรและรายการหลักฐาน ห้ามติดตั้ง DDL หรือโหลดข้อมูลซ้ำเพียงเพื่อรับช่วงงาน
 4. ให้ BI/Infra ยืนยันเครื่องมือและสิทธิ์บริการ, read-only principal, network/endpoint ที่จะใช้จริง และข้อกำหนด RLS ก่อนเชื่อมต่อ ไม่ถือว่า Glue connection เดิมเป็นเส้นทางที่เครื่องมือ BI ใช้ได้แล้ว
 5. หลังเชื่อมได้ ให้ BI ร่วม DW ตรวจ Dashboard ด้วยตัวกรองเดียวกัน: items **181759**, distinct orders **125226**, sale amount ทุกสถานะ **10827118.925100** ตรวจยอดแต่ละสถานะกับรายงานอ้างอิง และคำนวณ DISTINCT ใหม่สำหรับยอดรวม
@@ -22,7 +22,7 @@ User decision: แยกยอดตามสถานะ ยังไม่เ�
 ## Connection and scope
 
 - Region us-east-1, cluster thelook-redshift-cluster-1, database thelook_glue_validation, schema reporting.
-- Coordinate network and read-only access with Infra. Do not give BI the LabRole/admin password. No permissions are granted by this package.
+- Coordinate network and read-only access with Infra. Do not give BI the LabRole/admin password. SQL10/11 ไม่ให้สิทธิ์; SQL12 เพิ่ม CREATE USER/GROUP/GRANT ตามคู่มือ role views ห้ามรันส่วนสร้างผู้ใช้ซ้ำและยังต้องเก็บหลักฐาน effective privileges.
 - Cluster must be Available for direct queries; pause when idle after saving evidence. QuickSight permissions/connectivity remain unconfirmed. No dashboard has been deployed by this package.
 - Source lineage: batch 20261023T151247118967Z_f8a02155, rule provisional-v1. This is a validation warehouse, not a declared production endpoint.
 
@@ -39,7 +39,10 @@ User decision: แยกยอดตามสถานะ ยังไม่เ�
 | v_batch_checks | One recorded check row; counts have meanings specific to check_name |
 | v_batch_attempt_history | One attempt; includes failures for unpublished batches |
 
-## Metric dictionary
+## Metric dictionary — reporting เดิม
+
+SQL12 มีนิยามและgrainต่างออกไป อ่าน [metric ของBIและpermission map](bi_role_views.md) ก่อนใช้ net_sales/gross_profit/customer profiles; คำอธิบายคอลัมน์และprivacyในหัวข้อนี้หมายถึง schema reporting เท่านั้น
+
 
 - item_count = count of item rows; unit_count = SUM(quantity), currently quantity=1.
 - distinct_order_count = COUNT(DISTINCT order_id) within the selected group. It is NOT additive across product, DC or status groups. For total/filtered orders compute DISTINCT from v_sales_item again.
@@ -63,11 +66,11 @@ User decision: แยกยอดตามสถานะ ยังไม่เ�
 
 Acceptance: reporting checks all8 PASS, initial item_count181759, distinct orders125226, sale_amount10827118.925100. Category/DC drilldowns must not multiply rows. Verify total orders using detail DISTINCT, not SUM of preaggregated orders. Confirm no PII columns in field list. Add status, UTC and source snapshot limitation to dashboard notes.
 
-Inventory balance/stock aging and events funnel are NOT delivered by fact_sales. They require separate definitions/modeling over inventory_items/events, including what time stock is measured and how sessions/conversions are defined. Do not represent these as finished dashboards.
+fact_sales ไม่ได้สร้าง inventory/event facts ใหม่ SQL12 เพิ่ม v_ops_inventory จาก staging และ v_mkt_funnel แบบ sessionsต่อevent จึงมีโค้ด viewsส่วนนี้แล้ว แต่ยังไม่รับรอง stock aging/stock ณเวลาใดหรือ ordered funnel/conversion และไม่ใช่Dashboardที่เสร็จแล้ว ดูนิยาม/ข้อจำกัดในคู่มือ role views.
 
 ## Remaining approvals/information
 
-Business/source owner: snapshot time/timezone, currency, revenue/returns recognition rules if net metrics are later needed. BI/Infra: actual read-only principal, QuickSight availability, network path and row-level access requirements. Current status-separated views can be reviewed without inventing these answers.
+Business/source owner: snapshot time/timezone, currency, revenue/returns recognition rules if net metrics are later needed. BI/Infra: effective privileges ของ users/groups ที่ SQL12 ระบุ, QuickSight availability, network path and row-level access requirements. Current status-separated views can be reviewed without inventing these answers.
 
 ## หลักฐานที่เตรียมให้ผู้รับแล้ว
 

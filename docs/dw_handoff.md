@@ -133,3 +133,11 @@ DW สำหรับ Version 1 แบบคงที่พร้อมส่ง
 - ยังขาดไฟล์ต้นฉบับ rollback before/after, atomic handler patch verification และภาพ/exports reporting checks8รายการรอบเดิม; Catalog schema/locationเต็มและCSV detailบางส่วนยังไม่มี รายงานสรุปเดิมไม่ใช่หลักฐานต้นฉบับที่รวบรวมครบแล้ว
 
 ตารางรายการหลักฐานก่อนหน้าคือรายการที่ต้องส่ง ส่วนหัวข้อนี้ระบุสิ่งที่รวบรวมได้ล่าสุด ยังไม่มีการส่งภายนอกหรือรับมอบจริง และไม่ได้ตรวจ AWS สดโดยผู้จัดเอกสาร
+
+## เพิ่มชั้น BI ตามฝ่าย — 25 ตุลาคม 2026
+
+[SQL12](../code/sql/12_bi_role_views_final.sql) เพิ่ม schema bi8views (base1+สำหรับฝ่าย7), users/groups5ฝ่ายและGRANT; [คู่มือrole views](bi_role_views.md) อธิบายgrain/metrics/accessครบ นิยามBI net_salesตัด Cancelled/Returned:8127336.728623/netitems136437 เป็นยอดอ้างอิงจากstatusเดิม ไม่ใช่ผลexecuteSQL12ที่ผู้จัดเอกสารรัน และไม่ใช่recognized revenue
+
+หัวSQLระบุdeployment/ยอด/สิทธิ์ผ่านแล้ว บันทึกเป็นสถานะตามผู้จัดทำSQL ยังไม่มีผลSQL12ต้นฉบับแนบในชุดหลักฐาน; ตัวอย่างpermission testingมีmarketing/sales ต้องตรวจครบ5กลุ่มและeffective privilegesก่อนรับรอง ไม่ใช่RLSหรือIAMroles และไม่ใช้เปลี่ยนสถานะDashboard/รับมอบ
+
+viewsใหม่อ่านinventory/eventsจากstagingโดยตรง ต้องแยกจากfact_salesและตรวจsemantic/coverageของตัวเอง คู่มือเดิม/หลักฐานreporting8checksไม่รับรองSQL12อัตโนมัติ SQL12จัดส่งแยก ไม่ได้เพิ่มเข้าreporting generator/package และห้ามรันCREATE USER/GROUPซ้ำ

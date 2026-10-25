@@ -48,3 +48,11 @@
 ชุดหลักฐานในเครื่อง: `outputs/DW-handoff-evidence/README.md` (ถูก ignore จาก Git ต้องส่งแยก) ได้รับ READY/report, ภาพ Glue/CloudWatch ที่ผูก Run ID กับ batch, ภาพ ledger/checks/totals/reporting/SCD audit และ replay result/statements แล้ว รอบ replay `ae45e3c1-e6e0-4d29-b70f-e63d3da1ea43` มี16 statements FINISHED, comparison8ตาราง PASS และ new NO_OP PASS
 
 รายการผ่านเดิมด้านบนอ้างหลักฐานที่ผู้ใช้เคยรายงาน ไม่ได้แปลว่ามีต้นฉบับครบในชุดส่งมอบ: ยังขาด SCD rollback before/after, atomic patch verification และภาพ/exports reporting checks8รายการรอบเดิม ผล SELECT ล่าสุดยืนยันยอด/grain/สถานะปัจจุบัน ไม่ใช้แทน checksทุกข้อหรือ rollback ไม่มีการรันทดสอบซ้ำเพื่อรวบรวมหลักฐานนี้
+
+## อัปเดต BI SQL12 — 25 ตุลาคม 2026
+
+- [x] เพิ่ม code/sql/12_bi_role_views_final.sql และ [คู่มือviews/grain/metrics/permission map](docs/bi_role_views.md): bi8views, users/groups5ฝ่าย; ไม่ใช่8reportingviewsเดิม
+- มีโค้ด inventoryจากstaging และsessionsต่อeventแล้ว ไม่ได้สร้างfact_inventory/fact_eventsหรือรับรองordered funnel/stock aging
+- หัวSQLแจ้งรันและทดสอบแล้ว บันทึกเป็นคำรายงานผู้จัดทำSQL; ยังไม่มีผลต้นฉบับของSQL12ให้ตรวจ ไม่ติ๊กdeployment/accessครบจากโค้ดอย่างเดียว
+- [ ] รวบรวมผลตรวจยอดส่วน8 (มี10SELECTแม้หัวไฟล์เขียน9ข้อ) และeffective privileges/positive-negativeครบ5กลุ่ม; BI net_salesอ้างอิง8127336.728623/netitems136437
+- การเพิ่มSQLไม่ปิดknown issues, BI connectivity/RLS requirement/Dashboard/รับมอบ และไม่เปลี่ยนขอบเขตข้อมูลคงที่

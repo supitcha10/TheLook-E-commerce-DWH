@@ -97,3 +97,9 @@ Local tests ตรวจ column order/types/nulls ของ Parquet จริง
 - [ ] ตกลง metric/reporting status filters ก่อน BI
 
 อ้างอิง: [COPY Parquet](https://docs.aws.amazon.com/redshift/latest/dg/copy-usage_notes-copy-from-columnar.html), [S3 manifest](https://docs.aws.amazon.com/redshift/latest/dg/copy-parameters-data-source-s3.html), [Procedure transactions](https://docs.aws.amazon.com/redshift/latest/dg/stored-procedure-transaction-management.html), [Error handling](https://docs.aws.amazon.com/redshift/latest/dg/stored-procedure-trapping-errors.html)
+
+## SQL12: BI views และสิทธิ์ตามฝ่าย
+
+เพิ่ม [12_bi_role_views_final.sql](12_bi_role_views_final.sql) บนฐาน thelook_glue_validation หลังชั้นreportingเดิม อ่าน [คู่มือBI role views](../../docs/bi_role_views.md) ก่อนรับช่วง:bi8views,5users/groups,นิยามnet_salesแยกจากยอดstatusเดิม
+
+หัวSQLระบุรันแล้วแต่ยังไม่มีผลSQL12แนบ ห้ามexecuteทั้งไฟล์ซ้ำโดยเฉพาะส่วน6CREATE GROUP/USER รหัสในไฟล์เป็นplaceholderไม่ใช่credentialจริง SQLนี้ไม่ได้รวมในgeneratorหรือreporting package10/11อัตโนมัติ ส่วน8มีตัวอย่างตรวจ10SELECT; ส่วน7เป็นตัวอย่างmarketing/salesไม่ใช่testครบ5ฝ่าย ไม่มีRLS policyในไฟล์นี้

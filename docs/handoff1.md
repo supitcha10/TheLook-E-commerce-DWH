@@ -80,3 +80,10 @@ Catalogเป็นmetadata branch; ETLอ่านS3โดยexplicit schema �
 - [x] รวม READY/report/Glue-CloudWatch linkage, Redshift/reporting totals, SCD audit และ replay result/statements รอบที่ผ่าน
 - หลักฐานที่ยังไม่มีต้นฉบับในชุด: rollback before/after, atomic patch verification และ reporting checks8รายการรอบเดิม; ไม่เปลี่ยนสถานะการทดสอบเดิมเป็นการทดสอบใหม่ และไม่ใช้ audit/totals แทนหลักฐานเหล่านี้
 - DW พร้อมส่งต่อภายใต้ขอบเขตข้อมูลคงที่; checklist เรื่อง known issues/Infra/BI/รับมอบที่ยังว่างข้างต้นยังคงรอหลักฐาน ไม่ต้องรัน Glue/loader/replay ซ้ำเพื่อรับช่วงงาน
+
+## เพิ่ม SQL12 — 25 ตุลาคม 2026
+
+- [x] มี [SQL12](../code/sql/12_bi_role_views_final.sql) และ [dictionary/permission map](bi_role_views.md) สำหรับbi8views/users-groups5ฝ่าย
+- สถานะรัน/ทดสอบแล้วเป็นข้อความจากผู้จัดทำSQL ยังไม่มีหลักฐานต้นฉบับSQL12แนบแยกจากreportingเดิม
+- [ ] เก็บผล10SELECTส่วน8, ตรวจgrain/reference/inventory/eventsและeffective privileges/positive-negativeครบ5กลุ่ม
+- การให้สิทธิ์ตามview/groupไม่ใช่RLS การยืนยันBI connection/Dashboard/known issues/รับมอบยังเปิดตามรายการก่อนหน้า
